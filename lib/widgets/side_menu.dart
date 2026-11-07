@@ -320,6 +320,15 @@ class SideMenu extends StatelessWidget {
           ),
           _buildMenuItem(
             context,
+            icon: Icons.account_balance_wallet_rounded,
+            title: 'Earnings & Performance',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/earnings');
+            },
+          ),
+          _buildMenuItem(
+            context,
             icon: Icons.dns_rounded,
             title: 'Server Settings',
             onTap: () {

@@ -4,10 +4,12 @@ import '../models/order.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
+import '../services/offline_queue_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   final LocationService _locationService = LocationService();
+  final OfflineQueueService _offlineQueue = OfflineQueueService();
 
   List<Order> _allOrders = [];
   List<Order> _latestOrders = [];
@@ -33,6 +35,7 @@ class OrderProvider extends ChangeNotifier {
   bool get sortByProximity => _sortByProximity;
 
   Order? get incomingDispatchAlert => _incomingDispatchAlert;
+  int get pendingOfflineActionsCount => _offlineQueue.pendingCountNotifier.value;
 
   void dismissIncomingAlert() {
     _incomingDispatchAlert = null;
@@ -42,6 +45,17 @@ class OrderProvider extends ChangeNotifier {
   void toggleProximitySorting() {
     _sortByProximity = !_sortByProximity;
     notifyListeners();
+  }
+
+  /// Adaptive GPS power mode based on driver shift and order load
+  void adjustLocationPowerMode(bool isOnline) {
+    if (!isOnline) {
+      _locationService.setPowerMode(LocationPowerMode.powerSave);
+    } else if (activeOrders.isNotEmpty) {
+      _locationService.setPowerMode(LocationPowerMode.highPerformance);
+    } else {
+      _locationService.setPowerMode(LocationPowerMode.balanced);
+    }
   }
 
   /// Initialize or refresh the rider's current GPS location
@@ -81,14 +95,30 @@ class OrderProvider extends ChangeNotifier {
     }
     _lastTelemetrySentAt = now;
 
-    await _api.sendDriverTelemetry(
-      token: token,
-      latitude: _currentPosition!.latitude,
-      longitude: _currentPosition!.longitude,
-      heading: _currentPosition!.heading,
-      speed: _currentPosition!.speed,
-      accuracy: _currentPosition!.accuracy,
-    );
+    try {
+      await _api.sendDriverTelemetry(
+        token: token,
+        latitude: _currentPosition!.latitude,
+        longitude: _currentPosition!.longitude,
+        heading: _currentPosition!.heading,
+        speed: _currentPosition!.speed,
+        accuracy: _currentPosition!.accuracy,
+      );
+    } catch (_) {}
+  }
+
+  /// Replay pending offline actions when connection restores
+  Future<int> syncOfflineQueue(String token) async {
+    try {
+      final synced = await _offlineQueue.syncPendingActions(token, _api);
+      if (synced > 0) {
+        await fetchLatestOrders(token);
+        await fetchAllOrders(token);
+      }
+      return synced;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// Active orders (assigned, accepted, at_store, or on_delivery)
@@ -259,8 +289,21 @@ class OrderProvider extends ChangeNotifier {
     return updateStatus(token, orderId, 'on_delivery');
   }
 
-  Future<bool> markDelivered(String token, int orderId) async {
-    return updateStatus(token, orderId, 'delivered');
+  Future<bool> markDelivered(
+    String token,
+    int orderId, {
+    String? notes,
+    String? photoBase64,
+    String? recipientName,
+  }) async {
+    return updateStatus(
+      token,
+      orderId,
+      'delivered',
+      notes: notes,
+      photoBase64: photoBase64,
+      recipientName: recipientName,
+    );
   }
 
   Future<bool> declineOrder(String token, int orderId, {String? reason}) async {
@@ -272,6 +315,9 @@ class OrderProvider extends ChangeNotifier {
     int orderId,
     String status, {
     String? reason,
+    String? notes,
+    String? photoBase64,
+    String? recipientName,
   }) async {
     try {
       final result = await _api.updateOrderStatus(
@@ -279,6 +325,9 @@ class OrderProvider extends ChangeNotifier {
         orderId: orderId,
         status: status,
         reason: reason,
+        notes: notes,
+        photoBase64: photoBase64,
+        recipientName: recipientName,
       );
 
       if (result['success'] == true) {
@@ -298,7 +347,20 @@ class OrderProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      return false;
+      // Offline fallback: queue for sync when internet is restored
+      await _offlineQueue.enqueueAction(
+        type: 'status_update',
+        payload: {
+          'order_id': orderId,
+          'status': status,
+          'reason': reason,
+          'notes': notes,
+          'photo_base64': photoBase64,
+          'recipient_name': recipientName,
+        },
+      );
+      notifyListeners();
+      return true;
     }
   }
 }

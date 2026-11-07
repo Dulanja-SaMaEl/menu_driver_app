@@ -3,6 +3,17 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/order.dart';
 
+enum LocationPowerMode {
+  highPerformance(15, 15),
+  balanced(50, 25),
+  powerSave(0, 0);
+
+  final int distanceFilterMeters;
+  final int telemetryIntervalSeconds;
+
+  const LocationPowerMode(this.distanceFilterMeters, this.telemetryIntervalSeconds);
+}
+
 class LocationService {
   static final LocationService _instance = LocationService._internal();
   factory LocationService() => _instance;
@@ -10,6 +21,9 @@ class LocationService {
 
   Position? _lastKnownPosition;
   Position? get lastKnownPosition => _lastKnownPosition;
+
+  LocationPowerMode _currentPowerMode = LocationPowerMode.highPerformance;
+  LocationPowerMode get currentPowerMode => _currentPowerMode;
 
   StreamSubscription<Position>? _positionStreamSubscription;
   final StreamController<Position> _positionController =
@@ -77,12 +91,23 @@ class LocationService {
     }
   }
 
-  /// Start continuous tracking stream with 25-meter filter
-  void startLocationTracking({void Function(Position)? onPositionChanged}) {
+  /// Adaptive GPS mode for battery optimization
+  void setPowerMode(
+    LocationPowerMode mode, {
+    void Function(Position)? onPositionChanged,
+  }) {
+    _currentPowerMode = mode;
+    if (mode == LocationPowerMode.powerSave) {
+      stopLocationTracking();
+      return;
+    }
+
     _positionStreamSubscription?.cancel();
-    const settings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 25, // Update every 25 meters
+    final settings = LocationSettings(
+      accuracy: mode == LocationPowerMode.highPerformance
+          ? LocationAccuracy.high
+          : LocationAccuracy.medium,
+      distanceFilter: mode == LocationPowerMode.highPerformance ? 15 : 50,
     );
 
     _positionStreamSubscription =
@@ -98,6 +123,11 @@ class LocationService {
         if (kDebugMode) print('Error in location stream: $e');
       },
     );
+  }
+
+  /// Start continuous tracking stream with standard 25-meter filter
+  void startLocationTracking({void Function(Position)? onPositionChanged}) {
+    setPowerMode(LocationPowerMode.highPerformance, onPositionChanged: onPositionChanged);
   }
 
   void stopLocationTracking() {

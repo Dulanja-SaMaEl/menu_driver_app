@@ -10,6 +10,9 @@ import '../providers/order_provider.dart';
 import '../services/location_service.dart';
 import '../services/map_service.dart';
 import '../services/notification_service.dart';
+import '../services/offline_queue_service.dart';
+import '../widgets/order_checklist_sheet.dart';
+import '../widgets/proof_of_delivery_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -95,6 +98,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         await orderProvider.fetchAllOrders(driver.token!);
         await orderProvider.refreshLocation();
         await orderProvider.syncLocationTelemetry(driver.token!, isOnline: true);
+        await orderProvider.syncOfflineQueue(driver.token!);
+        orderProvider.adjustLocationPowerMode(isOnline);
         NotificationService.syncActiveOrdersNotification(orderProvider.allOrders);
         setState(() {
           _lastSyncedAt = DateTime.now();
@@ -115,7 +120,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         orderProvider.fetchAllOrders(driver.token!),
         orderProvider.refreshLocation(),
         if (isOnline) orderProvider.syncLocationTelemetry(driver.token!, isOnline: true),
+        orderProvider.syncOfflineQueue(driver.token!),
       ]);
+      orderProvider.adjustLocationPowerMode(isOnline);
       if (mounted) {
         NotificationService.syncActiveOrdersNotification(orderProvider.allOrders);
         setState(() {
@@ -270,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       statusSecondaryColor = const Color(0xFF1D4ED8);
       statusTextColor = Colors.white;
       statusTitle = 'On Delivery';
-      statusSubtitle = 'Active delivery in progress • GPS streaming';
+      statusSubtitle = 'Active delivery in progress • High-precision GPS';
       statusIcon = Icons.two_wheeler_rounded;
     } else if (rawStatus == 'busy') {
       statusPrimaryColor = const Color(0xFFF59E0B);
@@ -406,6 +413,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // Earnings Shortcut Button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Theme.of(context).dividerColor),
+                          ),
+                          child: IconButton(
+                            tooltip: 'Earnings & Performance',
+                            onPressed: () => Navigator.pushNamed(context, '/earnings'),
+                            icon: const Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Color(0xFF10B981),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         // Profile Button
                         Container(
                           decoration: BoxDecoration(
@@ -483,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              orderProvider.isLocationPermissionGranted ? 'Telemetry Active' : 'Enable GPS',
+                              orderProvider.isLocationPermissionGranted ? 'Adaptive GPS' : 'Enable GPS',
                               style: GoogleFonts.lato(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -497,6 +522,52 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                   ],
+                ),
+
+                // Offline Queue Banner (If requests were queued during network drop)
+                ValueListenableBuilder<int>(
+                  valueListenable: OfflineQueueService().pendingCountNotifier,
+                  builder: (ctx, count, _) {
+                    if (count == 0) return const SizedBox.shrink();
+                    return Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, color: Colors.orange, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '$count offline action(s) stored locally. Tap Sync to retry.',
+                              style: GoogleFonts.lato(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              if (driver?.token != null) {
+                                final synced = await orderProvider.syncOfflineQueue(driver!.token!);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Synced $synced offline action(s)!')),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Sync Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 16),
@@ -696,16 +767,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 const SizedBox(height: 24),
 
-                // Today's Summary Header
-                Text(
-                  "Today's Overview",
-                  style: GoogleFonts.lato(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                // Today's Summary Header with Tap to Earnings
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Today's Overview",
+                      style: GoogleFonts.lato(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/earnings'),
+                      icon: const Icon(Icons.insights_rounded, size: 16, color: Color(0xFF10B981)),
+                      label: const Text('Earnings & Stats', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
 
                 // Stats Grid
                 Row(
@@ -1148,7 +1229,13 @@ class _OrderCard extends StatefulWidget {
 class _OrderCardState extends State<_OrderCard> {
   bool _isUpdating = false;
 
-  Future<void> _handleTransition(String nextStatus, {String? reason}) async {
+  Future<void> _handleTransition(
+    String nextStatus, {
+    String? reason,
+    String? notes,
+    String? photoBase64,
+    String? recipientName,
+  }) async {
     if (widget.token == null) return;
     setState(() => _isUpdating = true);
 
@@ -1158,6 +1245,9 @@ class _OrderCardState extends State<_OrderCard> {
       widget.order.id,
       nextStatus,
       reason: reason,
+      notes: notes,
+      photoBase64: photoBase64,
+      recipientName: recipientName,
     );
 
     if (mounted) {
@@ -1385,62 +1475,100 @@ class _OrderCardState extends State<_OrderCard> {
 
           const SizedBox(height: 8),
 
-          // Delivery Address
-          InkWell(
-            onTap: () => MapService.openDirections(context, order),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.location_on_rounded, size: 15, color: Colors.redAccent),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      order.deliveryAddress,
-                      style: GoogleFonts.lato(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+          // Delivery Address & Map / Checklist Buttons
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => MapService.openDirections(context, order),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Icon(Icons.directions_rounded, size: 13, color: Color(0xFF2563EB)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Map',
-                          style: GoogleFonts.lato(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2563EB),
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.location_on_rounded, size: 15, color: Colors.redAccent),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            order.deliveryAddress,
+                            style: GoogleFonts.lato(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 6),
+              // Checklist Button
+              GestureDetector(
+                onTap: () => OrderChecklistSheet.show(context, order: order),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.checklist_rounded, size: 13, color: Colors.purple),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${order.items.length} items',
+                        style: GoogleFonts.lato(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Map Button
+              GestureDetector(
+                onTap: () => MapService.openDirections(context, order),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.directions_rounded, size: 13, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Map',
+                        style: GoogleFonts.lato(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2563EB),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const Divider(height: 24),
@@ -1453,7 +1581,7 @@ class _OrderCardState extends State<_OrderCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Order Total',
+                    'Order Total (Prepaid)',
                     style: GoogleFonts.lato(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -1551,15 +1679,30 @@ class _OrderCardState extends State<_OrderCard> {
             ),
           ),
           const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => _handleTransition('delivered'),
+          ElevatedButton.icon(
+            onPressed: () {
+              // Open Proof of Delivery Sheet (Photo & Notes)
+              ProofOfDeliverySheet.show(
+                context,
+                order: order,
+                onConfirm: ({notes, photoBase64, recipientName}) {
+                  _handleTransition(
+                    'delivered',
+                    notes: notes,
+                    photoBase64: photoBase64,
+                    recipientName: recipientName,
+                  );
+                },
+              );
+            },
+            icon: const Icon(Icons.verified_rounded, size: 16),
+            label: const Text('Delivered'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.success,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: const Size(0, 36),
             ),
-            child: const Text('Delivered'),
           ),
         ],
       );

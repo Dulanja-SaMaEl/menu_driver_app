@@ -12,8 +12,10 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/my_orders_screen.dart';
+import 'screens/earnings_screen.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'services/offline_queue_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +23,7 @@ void main() async {
     statusBarColor: Colors.transparent,
   ));
   await ApiService.initBaseUrl();
+  await OfflineQueueService().init();
   await NotificationService.init();
   runApp(const TheMenuDriverApp());
 }
@@ -50,6 +53,7 @@ class TheMenuDriverApp extends StatelessWidget {
           '/home': (_) => const HomeScreen(),
           '/profile': (_) => const ProfileScreen(),
           '/orders': (_) => const MyOrdersScreen(),
+          '/earnings': (_) => const EarningsScreen(),
         },
       ),
     );

@@ -1,3 +1,33 @@
+class OrderItem {
+  final String name;
+  final int quantity;
+  final String? notes;
+  bool isChecked;
+
+  OrderItem({
+    required this.name,
+    this.quantity = 1,
+    this.notes,
+    this.isChecked = false,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    return OrderItem(
+      name: (json['name'] ?? json['item_name'] ?? json['title'] ?? 'Menu Item').toString(),
+      quantity: json['quantity'] is int
+          ? json['quantity']
+          : int.tryParse(json['quantity']?.toString() ?? '1') ?? 1,
+      notes: json['notes']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'quantity': quantity,
+        'notes': notes,
+      };
+}
+
 class Order {
   final int id;
   final String orderNumber;
@@ -9,6 +39,10 @@ class Order {
   final double totalAmount;
   final String status;
   final DateTime createdAt;
+  final List<OrderItem> items;
+  final String? deliveryNotes;
+  final String? proofPhotoBase64;
+  final String? recipientName;
 
   Order({
     required this.id,
@@ -21,7 +55,11 @@ class Order {
     required this.totalAmount,
     required this.status,
     required this.createdAt,
-  });
+    List<OrderItem>? items,
+    this.deliveryNotes,
+    this.proofPhotoBase64,
+    this.recipientName,
+  }) : items = items ?? [OrderItem(name: 'FreshBox Meal Order (Packed)', quantity: 1)];
 
   bool get hasCoordinates =>
       latitude != null &&
@@ -73,6 +111,17 @@ class Order {
   }
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    final List<dynamic>? rawItems = json['items'] ?? json['order_items'];
+    final List<OrderItem> parsedItems;
+    if (rawItems != null && rawItems.isNotEmpty) {
+      parsedItems = rawItems
+          .map((item) => OrderItem.fromJson(
+              item is Map<String, dynamic> ? item : {'name': item.toString()}))
+          .toList();
+    } else {
+      parsedItems = [OrderItem(name: 'FreshBox Meal Order (Packed)', quantity: 1)];
+    }
+
     return Order(
       id: json['id'] is int
           ? json['id']
@@ -111,6 +160,10 @@ class Order {
           ? (DateTime.tryParse(json['created_at'].toString()) ??
               DateTime.now())
           : DateTime.now(),
+      items: parsedItems,
+      deliveryNotes: json['delivery_notes']?.toString(),
+      proofPhotoBase64: json['proof_photo_base64']?.toString(),
+      recipientName: json['recipient_name']?.toString(),
     );
   }
 
@@ -126,6 +179,10 @@ class Order {
       'total_amount': totalAmount,
       'status': status,
       'created_at': createdAt.toIso8601String(),
+      'items': items.map((i) => i.toJson()).toList(),
+      'delivery_notes': deliveryNotes,
+      'proof_photo_base64': proofPhotoBase64,
+      'recipient_name': recipientName,
     };
   }
 }

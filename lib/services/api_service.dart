@@ -209,10 +209,16 @@ class ApiService {
     required int orderId,
     required String status,
     String? reason,
+    String? notes,
+    String? photoBase64,
+    String? recipientName,
   }) async {
     final body = jsonEncode({
       'status': status,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      if (photoBase64 != null && photoBase64.isNotEmpty) 'photo_base64': photoBase64,
+      if (recipientName != null && recipientName.trim().isNotEmpty) 'recipient_name': recipientName.trim(),
     });
 
     // 1. Try PATCH /orders/{id}/status
