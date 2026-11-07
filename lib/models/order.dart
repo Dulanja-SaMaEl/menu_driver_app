@@ -23,6 +23,18 @@ class Order {
     required this.createdAt,
   });
 
+  bool get hasCoordinates =>
+      latitude != null &&
+      longitude != null &&
+      latitude != 0.0 &&
+      longitude != 0.0;
+
+  bool get isActive =>
+      status.toLowerCase() == 'assigned' ||
+      status.toLowerCase() == 'on_delivery';
+
+  bool get isDelivered => status.toLowerCase() == 'delivered';
+
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       id: json['id'] is int
