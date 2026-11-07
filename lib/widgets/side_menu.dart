@@ -25,13 +25,13 @@ class SideMenu extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(
                 children: [
-                  const Icon(Icons.dns_rounded, color: Color(0xFF2563EB), size: 24),
+                  const Icon(Icons.dns_rounded, color: Color(0xFF2563EB), size: 22),
                   const SizedBox(width: 10),
                   Text(
                     'Server Configuration',
                     style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w800,
-                      fontSize: 18,
+                      fontSize: 17,
                     ),
                   ),
                 ],
@@ -70,7 +70,7 @@ class SideMenu extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         ActionChip(
-                          label: const Text('Render Service', style: TextStyle(fontSize: 10)),
+                          label: const Text('Render Online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                           onPressed: () {
                             setDialogState(() {
                               textCtrl.text = 'https://the-menu-admin.onrender.com/api/driver-app-api';
@@ -293,7 +293,7 @@ class SideMenu extends StatelessWidget {
               ],
             ),
             accountEmail: Text(
-              driver?.email ?? 'driver@freshbox.com',
+              driver?.email ?? 'driver@themenu.com',
               style: GoogleFonts.plusJakartaSans(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.8),
                 fontSize: 13,
@@ -434,6 +434,7 @@ class SideMenu extends StatelessWidget {
           fontSize: 14,
         ),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       onTap: onTap,
     );
   }

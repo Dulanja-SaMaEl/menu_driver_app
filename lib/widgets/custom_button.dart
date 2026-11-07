@@ -20,7 +20,7 @@ class CustomButton extends StatelessWidget {
     this.color,
     this.textColor,
     this.icon,
-    this.height = 54,
+    this.height = 52,
     this.isOutlined = false,
   });
 
@@ -28,18 +28,22 @@ class CustomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveColor = color ?? AppTheme.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isEnabled = onPressed != null && !isLoading;
 
     if (isOutlined) {
       return SizedBox(
         width: double.infinity,
         height: height,
         child: OutlinedButton(
-          onPressed: isLoading ? null : onPressed,
+          onPressed: isEnabled ? onPressed : null,
           style: OutlinedButton.styleFrom(
-            side: BorderSide(color: effectiveColor, width: 1.5),
+            side: BorderSide(
+              color: isEnabled ? effectiveColor : Theme.of(context).dividerColor,
+              width: 1.5,
+            ),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: _buildContent(effectiveColor),
+          child: _buildContent(isEnabled ? effectiveColor : Theme.of(context).disabledColor),
         ),
       );
     }
@@ -49,20 +53,21 @@ class CustomButton extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: onPressed != null && !isLoading
+        boxShadow: isEnabled
             ? [
                 BoxShadow(
-                  color: effectiveColor.withValues(alpha: isDark ? 0.3 : 0.25),
+                  color: effectiveColor.withValues(alpha: isDark ? 0.35 : 0.25),
                   blurRadius: 16,
-                  offset: const Offset(0, 6),
+                  offset: const Offset(0, 5),
                 ),
               ]
             : null,
       ),
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
+        onPressed: isEnabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: effectiveColor,
+          disabledBackgroundColor: effectiveColor.withValues(alpha: 0.5),
           foregroundColor: textColor ?? const Color(0xFF0F172A),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -73,13 +78,13 @@ class CustomButton extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(Color textColor) {
+  Widget _buildContent(Color textClr) {
     if (isLoading) {
       return SizedBox(
         width: 22,
         height: 22,
         child: CircularProgressIndicator(
-          color: textColor,
+          color: textClr,
           strokeWidth: 2.5,
         ),
       );
@@ -88,15 +93,20 @@ class CustomButton extends StatelessWidget {
     if (icon != null) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20, color: textColor),
+          Icon(icon, size: 20, color: textClr),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: textClr,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -106,9 +116,10 @@ class CustomButton extends StatelessWidget {
     return Text(
       label,
       style: GoogleFonts.plusJakartaSans(
-        color: textColor,
-        fontSize: 16,
+        color: textClr,
+        fontSize: 15,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.2,
       ),
     );
   }

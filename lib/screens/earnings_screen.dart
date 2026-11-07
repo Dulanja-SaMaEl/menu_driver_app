@@ -15,7 +15,7 @@ class EarningsScreen extends StatefulWidget {
 class _EarningsScreenState extends State<EarningsScreen> {
   String _selectedPeriod = 'today'; // 'today', 'week', 'all'
 
-  // Standard delivery compensation rate in Sri Lanka: Rs. 300 base fee per completed trip + distance bonus
+  // Standard delivery compensation rate: Rs. 300 base fee per completed trip
   static const double baseFeePerDrop = 300.0;
 
   @override
@@ -38,7 +38,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
     }).toList();
 
     final int completedTrips = periodOrders.length;
-    // Calculate rider compensation: Rs. 300 per delivery + 5% incentive
     final double estimatedEarnings = completedTrips * baseFeePerDrop;
     final double totalFoodDeliveredValue = periodOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
 
@@ -173,7 +172,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     color: AppTheme.success,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _metricCard(
                     icon: Icons.timer_outlined,
@@ -182,7 +181,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     color: const Color(0xFF2563EB),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _metricCard(
                     icon: Icons.restaurant_rounded,
@@ -202,15 +201,15 @@ class _EarningsScreenState extends State<EarningsScreen> {
               children: [
                 Text(
                   'Completed Deliveries Log',
-                  style: GoogleFonts.lato(
-                    fontSize: 18,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   '$completedTrips Finished',
-                  style: GoogleFonts.lato(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -240,7 +239,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     const SizedBox(height: 10),
                     Text(
                       'No completed orders in this period',
-                      style: GoogleFonts.lato(
+                      style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurface,
@@ -249,7 +248,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Deliver assigned orders to see trip earnings recorded here.',
-                      style: GoogleFonts.lato(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
@@ -293,7 +292,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                 children: [
                                   Text(
                                     order.orderNumber,
-                                    style: GoogleFonts.lato(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
                                       color: Theme.of(context).colorScheme.onSurface,
@@ -301,7 +300,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                   ),
                                   Text(
                                     '+ Rs. ${baseFeePerDrop.toStringAsFixed(0)}',
-                                    style: GoogleFonts.lato(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 14,
                                       color: AppTheme.success,
@@ -312,7 +311,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 '${order.customerName} • ${order.deliveryAddress}',
-                                style: GoogleFonts.lato(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   color: Theme.of(context)
                                       .colorScheme
@@ -333,7 +332,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                     ),
                                     child: Text(
                                       'Prepaid Online',
-                                      style: GoogleFonts.lato(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         color: const Color(0xFF2563EB),
@@ -343,7 +342,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')}',
-                                    style: GoogleFonts.lato(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11,
                                       color: Theme.of(context)
                                           .colorScheme
@@ -413,7 +412,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -423,22 +422,28 @@ class _EarningsScreenState extends State<EarningsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.onSurface,
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
             ),
           ),
         ],

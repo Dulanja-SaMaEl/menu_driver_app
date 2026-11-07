@@ -51,7 +51,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,14 +66,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       order.orderNumber,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.primaryDark,
                       ),
@@ -81,10 +81,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     _StatusChip(status: order.status),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 _detailRow(Icons.person_rounded, 'Customer', order.customerName),
                 const SizedBox(height: 12),
-                _detailRow(Icons.phone_rounded, 'Phone', order.customerPhone),
+                _detailRow(Icons.phone_rounded, 'Phone', order.customerPhone.isNotEmpty ? order.customerPhone : 'Not provided'),
                 const SizedBox(height: 12),
                 _detailRow(
                   Icons.location_on_rounded,
@@ -123,14 +123,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   'Assigned Time',
                   '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')} • ${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                 ),
-                const Divider(height: 32),
+                const Divider(height: 28),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total Cash to Collect',
+                      'Order Total (Prepaid)',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -145,7 +145,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 if (order.isActive) ...[
                   SizedBox(
                     width: double.infinity,
@@ -203,7 +203,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               Text(
                 value,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -222,7 +222,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     final driver = context.watch<AuthProvider>().driver;
     final allOrders = orderProvider.allOrders;
 
-    // Filter list
     final filteredOrders = allOrders.where((order) {
       final matchesFilter = switch (_selectedFilter) {
         'active' => order.isActive,
@@ -259,7 +258,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w800,
             letterSpacing: 2,
-            fontSize: 16,
+            fontSize: 15,
           ),
         ),
         centerTitle: true,
@@ -271,7 +270,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           children: [
             // Overview Stats
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
               child: Row(
                 children: [
                   Expanded(
@@ -282,7 +281,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       color: AppTheme.accent,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _StatCard(
                       icon: Icons.check_circle_outline_rounded,
@@ -296,11 +295,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             ),
             // Search Bar & Filter Chips Header
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
               color: Theme.of(context).colorScheme.surface,
               child: Column(
                 children: [
-                  // Search Field
                   TextField(
                     controller: _searchCtrl,
                     onChanged: (val) => setState(() => _searchQuery = val),
@@ -322,7 +320,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Filter Chips
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -363,14 +360,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             children: [
                               Icon(
                                 Icons.receipt_long_outlined,
-                                size: 56,
+                                size: 52,
                                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 12),
                               Text(
                                 'No orders found',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: Theme.of(context).colorScheme.onSurface,
                                 ),
@@ -379,9 +376,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                               Text(
                                 _searchQuery.isNotEmpty
                                     ? 'Try a different search keyword'
-                                    : 'Assigned delivery orders will be logged here',
+                                    : 'Assigned delivery orders will appear here',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                                 ),
                               ),
@@ -391,7 +388,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: filteredOrders.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 14),
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final order = filteredOrders[index];
                             return _OrderListItem(
@@ -519,7 +516,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                       order.orderNumber,
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                        fontSize: 15,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
@@ -528,7 +525,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                 _StatusChip(status: order.status),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Icon(Icons.person_outline_rounded,
@@ -537,7 +534,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                 const SizedBox(width: 8),
                 Text(
                   order.customerName,
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
               ],
             ),
@@ -556,14 +553,14 @@ class _OrderListItemState extends State<_OrderListItem> {
                         color: Colors.redAccent.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.location_on_rounded, size: 15, color: Colors.redAccent),
+                      child: const Icon(Icons.location_on_rounded, size: 14, color: Colors.redAccent),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         order.deliveryAddress,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w500,
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
                         ),
@@ -581,7 +578,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.directions_rounded, size: 13, color: Color(0xFF2563EB)),
+                          const Icon(Icons.directions_rounded, size: 12, color: Color(0xFF2563EB)),
                           const SizedBox(width: 4),
                           Text(
                             'Map',
@@ -598,7 +595,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                 ),
               ),
             ),
-            const Divider(height: 24),
+            const Divider(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -606,9 +603,9 @@ class _OrderListItemState extends State<_OrderListItem> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Total Amount',
+                      'Total Amount (Prepaid)',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         fontWeight: FontWeight.w600,
                       ),
@@ -617,7 +614,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                       'Rs. ${order.totalAmount.toStringAsFixed(2)}',
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w800,
-                        fontSize: 17,
+                        fontSize: 16,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
@@ -757,7 +754,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -765,23 +762,29 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.plusJakartaSans(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

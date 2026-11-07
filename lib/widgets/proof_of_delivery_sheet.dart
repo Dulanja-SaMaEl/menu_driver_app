@@ -125,15 +125,15 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
                   children: [
                     Text(
                       'Proof of Delivery',
-                      style: GoogleFonts.lato(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       'Confirm order completion for ${widget.order.orderNumber}',
-                      style: GoogleFonts.lato(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -146,18 +146,18 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
                     color: AppTheme.success.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.verified_rounded, color: AppTheme.success, size: 24),
+                  child: const Icon(Icons.verified_rounded, color: AppTheme.success, size: 22),
                 ),
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // Camera / Doorstep Photo Preview Card
             GestureDetector(
               onTap: () => _pickImage(ImageSource.camera),
               child: Container(
-                height: 150,
+                height: 140,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
@@ -198,13 +198,13 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
                         children: [
                           Icon(
                             Icons.camera_alt_rounded,
-                            size: 38,
+                            size: 34,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Take Doorstep / Handover Photo (Optional)',
-                            style: GoogleFonts.lato(
+                            'Take Handover Photo (Optional)',
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.onSurface,
@@ -212,8 +212,8 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Eliminates dispute with the customer and admin',
-                            style: GoogleFonts.lato(
+                            'Eliminates delivery disputes with customer & admin',
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
@@ -223,7 +223,7 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             // Choose from Gallery option
             Row(
@@ -231,22 +231,23 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
               children: [
                 TextButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  icon: const Icon(Icons.photo_library_outlined, size: 15),
                   label: const Text('Choose from Gallery', style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             // Received By Name
             Text(
               'Received By',
-              style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold),
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _recipientCtrl,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Customer / Recipient Name',
                 prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
@@ -260,20 +261,21 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
             // Delivery Notes
             Text(
               'Delivery Notes',
-              style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold),
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _notesCtrl,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'e.g., Handed to customer, Left at gate with guard',
+                hintText: 'e.g., Handed to customer, Left with security guard',
                 prefixIcon: const Icon(Icons.notes_rounded, size: 20),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
             // Action Buttons
             SizedBox(
@@ -289,17 +291,17 @@ class _ProofOfDeliverySheetState extends State<ProofOfDeliverySheet> {
                 icon: const Icon(Icons.check_circle_rounded),
                 label: Text(
                   'Confirm & Mark Delivered',
-                  style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w800),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Center(
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancel',
-                  style: GoogleFonts.lato(color: Colors.grey),
+                  style: GoogleFonts.plusJakartaSans(color: Colors.grey, fontSize: 13),
                 ),
               ),
             ),

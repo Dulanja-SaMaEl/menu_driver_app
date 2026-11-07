@@ -75,7 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  // Active 30-second live sync loop when online for real-time order dispatch from admin
   void _startLiveBackgroundSync() {
     _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -89,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final driver = auth.driver;
     if (driver?.token != null) {
       final isOnline = (driver?.status ?? '').toLowerCase() != 'offline';
-      if (!isOnline) return; // Save bandwidth when offline
+      if (!isOnline) return;
 
       await auth.refreshProfile();
       if (mounted) {
@@ -146,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const SizedBox(width: 8),
               Text(
                 'Synced with server (${_formatTime(_lastSyncedAt ?? DateTime.now())})',
-                style: GoogleFonts.lato(color: Colors.white),
+                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -192,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               children: [
                 Text(
                   'Set Your Status',
-                  style: GoogleFonts.lato(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -277,28 +276,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       statusSecondaryColor = const Color(0xFF1D4ED8);
       statusTextColor = Colors.white;
       statusTitle = 'On Delivery';
-      statusSubtitle = 'Active delivery in progress • High-precision GPS';
+      statusSubtitle = 'Active delivery • GPS tracking';
       statusIcon = Icons.two_wheeler_rounded;
     } else if (rawStatus == 'busy') {
       statusPrimaryColor = const Color(0xFFF59E0B);
       statusSecondaryColor = const Color(0xFFD97706);
       statusTextColor = Colors.black87;
       statusTitle = 'Busy';
-      statusSubtitle = 'Paused from new order assignments';
+      statusSubtitle = 'Paused from new assignments';
       statusIcon = Icons.pause_circle_rounded;
     } else if (isOnline) {
       statusPrimaryColor = AppTheme.primary;
       statusSecondaryColor = AppTheme.primaryDark;
       statusTextColor = Colors.black;
       statusTitle = 'Online & Connected';
-      statusSubtitle = 'Ready for dispatches from the-menu-admin';
+      statusSubtitle = 'Ready for dispatches from admin';
       statusIcon = Icons.electric_bolt_rounded;
     } else {
       statusPrimaryColor = Theme.of(context).colorScheme.surface;
       statusSecondaryColor = Theme.of(context).colorScheme.surface;
       statusTextColor = Theme.of(context).colorScheme.onSurface;
       statusTitle = 'You are Offline';
-      statusSubtitle = 'Turn on switch to connect with admin panel';
+      statusSubtitle = 'Switch on to receive dispatches';
       statusIcon = Icons.power_settings_new_rounded;
     }
 
@@ -311,139 +310,138 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           color: AppTheme.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header with Menu, Manual Refresh & Profile
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                          ),
-                          child: IconButton(
-                            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                            icon: Icon(
-                              Icons.menu_rounded,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Theme.of(context).dividerColor),
+                      ),
+                      child: IconButton(
+                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.menu_rounded,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          size: 22,
                         ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Welcome back,',
-                              style: GoogleFonts.lato(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.6),
-                                fontSize: 14,
-                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Welcome back,',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                              fontSize: 12,
                             ),
-                            Row(
-                              children: [
-                                Text(
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
                                   driverName,
-                                  style: GoogleFonts.lato(
+                                  style: GoogleFonts.plusJakartaSans(
                                     color: Theme.of(context).colorScheme.onSurface,
-                                    fontSize: 20,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(width: 8),
-                                // Realtime glowing pulse indicator
-                                FadeTransition(
-                                  opacity: isOnline ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isOnline ? const Color(0xFF10B981) : Colors.grey,
-                                      boxShadow: isOnline
-                                          ? [
-                                              BoxShadow(
-                                                color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                                                blurRadius: 6,
-                                                spreadRadius: 2,
-                                              )
-                                            ]
-                                          : null,
-                                    ),
+                              ),
+                              const SizedBox(width: 6),
+                              FadeTransition(
+                                opacity: isOnline ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isOnline ? const Color(0xFF10B981) : Colors.grey,
+                                    boxShadow: isOnline
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF10B981).withValues(alpha: 0.6),
+                                              blurRadius: 6,
+                                              spreadRadius: 2,
+                                            )
+                                          ]
+                                        : null,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Manual Refresh Button
                         Container(
+                          width: 38,
+                          height: 38,
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Theme.of(context).dividerColor),
                           ),
                           child: IconButton(
-                            tooltip: 'Manual Refresh (Sync Orders & Location)',
+                            tooltip: 'Manual Refresh',
                             onPressed: _isManualRefreshing ? null : _handleManualRefresh,
+                            padding: EdgeInsets.zero,
                             icon: _isManualRefreshing
                                 ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
+                                    width: 14,
+                                    height: 14,
                                     child: CircularProgressIndicator(strokeWidth: 2),
                                   )
                                 : Icon(
                                     Icons.refresh_rounded,
                                     color: Theme.of(context).colorScheme.onSurface,
-                                    size: 20,
+                                    size: 18,
                                   ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Earnings Shortcut Button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                          ),
-                          child: IconButton(
-                            tooltip: 'Earnings & Performance',
-                            onPressed: () => Navigator.pushNamed(context, '/earnings'),
-                            icon: const Icon(
-                              Icons.account_balance_wallet_outlined,
-                              color: Color(0xFF10B981),
-                              size: 20,
+                        // Profile Avatar Button
+                        InkWell(
+                          onTap: () => Navigator.pushNamed(context, '/profile'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Profile Button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                          ),
-                          child: IconButton(
-                            onPressed: () => Navigator.pushNamed(context, '/profile'),
-                            icon: Icon(
-                              Icons.person_outline_rounded,
-                              color: Theme.of(context).colorScheme.onSurface,
-                              size: 20,
+                            child: Center(
+                              child: Text(
+                                driver?.name.isNotEmpty == true ? driver!.name.substring(0, 1).toUpperCase() : 'D',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppTheme.primaryDark,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -463,16 +461,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Icon(
                           Icons.sync_rounded,
                           size: 14,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           _lastSyncedAt != null
                               ? 'Live sync ${_formatTime(_lastSyncedAt!)}'
                               : 'Auto-syncs every 30s',
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -509,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             const SizedBox(width: 4),
                             Text(
                               orderProvider.isLocationPermissionGranted ? 'Adaptive GPS' : 'Enable GPS',
-                              style: GoogleFonts.lato(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: orderProvider.isLocationPermissionGranted
@@ -524,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
 
-                // Offline Queue Banner (If requests were queued during network drop)
+                // Offline Queue Banner
                 ValueListenableBuilder<int>(
                   valueListenable: OfflineQueueService().pendingCountNotifier,
                   builder: (ctx, count, _) {
@@ -544,7 +542,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           Expanded(
                             child: Text(
                               '$count offline action(s) stored locally. Tap Sync to retry.',
-                              style: GoogleFonts.lato(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange[800],
@@ -576,14 +574,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 GestureDetector(
                   onTap: () => _showStatusPicker(context, rawStatus),
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [statusPrimaryColor, statusSecondaryColor],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       border: !isOnline
                           ? Border.all(color: Theme.of(context).dividerColor)
                           : null,
@@ -617,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   size: 24,
                                 ),
                               ),
-                              const SizedBox(width: 14),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,13 +624,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       children: [
                                         Text(
                                           statusTitle,
-                                          style: GoogleFonts.lato(
+                                          style: GoogleFonts.plusJakartaSans(
                                             color: statusTextColor,
-                                            fontSize: 18,
+                                            fontSize: 16,
                                             fontWeight: FontWeight.w800,
                                           ),
                                         ),
-                                        const SizedBox(width: 6),
+                                        const SizedBox(width: 4),
                                         Icon(
                                           Icons.arrow_drop_down_rounded,
                                           color: statusTextColor,
@@ -643,15 +641,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     const SizedBox(height: 2),
                                     Text(
                                       statusSubtitle,
-                                      style: GoogleFonts.lato(
+                                      style: GoogleFonts.plusJakartaSans(
                                         color: isOnline
                                             ? statusTextColor.withValues(alpha: 0.8)
                                             : Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
                                                 .withValues(alpha: 0.6),
-                                        fontSize: 12,
+                                        fontSize: 11,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
@@ -680,9 +680,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
 
-                // Incoming Dispatch Alert Banner (When admin assigns a new order)
+                // Incoming Dispatch Alert Banner
                 if (incomingAlert != null) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -703,9 +703,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 const SizedBox(width: 8),
                                 Text(
                                   'New Dispatch from Admin!',
-                                  style: GoogleFonts.lato(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     color: const Color(0xFF10B981),
                                   ),
                                 ),
@@ -720,7 +720,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         const SizedBox(height: 8),
                         Text(
                           '${incomingAlert.orderNumber} • ${incomingAlert.customerName}',
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -729,7 +729,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         const SizedBox(height: 4),
                         Text(
                           incomingAlert.deliveryAddress,
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
@@ -765,7 +765,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ],
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
                 // Today's Summary Header with Tap to Earnings
                 Row(
@@ -773,22 +773,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       "Today's Overview",
-                      style: GoogleFonts.lato(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     TextButton.icon(
                       onPressed: () => Navigator.pushNamed(context, '/earnings'),
                       icon: const Icon(Icons.insights_rounded, size: 16, color: Color(0xFF10B981)),
-                      label: const Text('Earnings & Stats', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Earnings & Stats',
+                        style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
 
-                // Stats Grid
+                // Stats Row with Overflow-Proof Fitted Layout
                 Row(
                   children: [
                     Expanded(
@@ -799,7 +802,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         color: AppTheme.accent,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _StatCard(
                         icon: Icons.delivery_dining_rounded,
@@ -808,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         color: const Color(0xFF2563EB),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _StatCard(
                         icon: Icons.check_circle_outline_rounded,
@@ -820,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 26),
 
                 // Nearest-First Multi-Stop Route Header
                 Row(
@@ -830,9 +833,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Text(
                           'Delivery Route',
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -846,7 +849,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                             child: Text(
                               '$activeOrdersCount Stops',
-                              style: GoogleFonts.lato(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: Colors.black,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -856,7 +859,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ],
                     ),
-                    // Proximity sort toggle
                     if (activeOrdersCount > 1)
                       GestureDetector(
                         onTap: () => orderProvider.toggleProximitySorting(),
@@ -886,7 +888,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               const SizedBox(width: 4),
                               Text(
                                 orderProvider.sortByProximity ? 'Nearest First' : 'Queue Order',
-                                style: GoogleFonts.lato(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: orderProvider.sortByProximity
@@ -946,7 +948,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 children: [
                                   Text(
                                     'Multi-Stop Route Optimized',
-                                    style: GoogleFonts.lato(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
                                       color: Theme.of(context).colorScheme.onSurface,
@@ -956,7 +958,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     orderProvider.sortByProximity
                                         ? 'Ordered closest to furthest from your current GPS position'
                                         : 'Ordered by dispatch creation time',
-                                    style: GoogleFonts.lato(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11,
                                       color: Theme.of(context)
                                           .colorScheme
@@ -973,38 +975,52 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.straighten_rounded,
-                                  size: 14,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Total: ${orderProvider.totalRouteDistanceFormatted}',
-                                  style: GoogleFonts.lato(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Theme.of(context).colorScheme.onSurface,
+                            Flexible(
+                              child: Wrap(
+                                spacing: 10,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.straighten_rounded,
+                                        size: 14,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Total: ${orderProvider.totalRouteDistanceFormatted}',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Icon(
-                                  Icons.timer_outlined,
-                                  size: 14,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  orderProvider.totalRouteDurationFormatted,
-                                  style: GoogleFonts.lato(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Theme.of(context).colorScheme.onSurface,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.timer_outlined,
+                                        size: 14,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        orderProvider.totalRouteDurationFormatted,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             ElevatedButton.icon(
                               onPressed: () => MapService.openMultiStopBatchDirections(
@@ -1017,7 +1033,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 backgroundColor: const Color(0xFF2563EB),
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                textStyle: GoogleFonts.lato(
+                                textStyle: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1052,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           Expanded(
                             child: Text(
                               'Location access is off. Tap here to enable GPS so orders sort by nearest first.',
-                              style: GoogleFonts.lato(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -1081,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Column(
@@ -1094,7 +1110,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         const SizedBox(height: 12),
                         Text(
                           'All deliveries completed!',
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -1106,7 +1122,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ? 'Waiting for new orders dispatched by Admin'
                               : 'Turn on online status to become available for dispatches',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
@@ -1182,14 +1198,14 @@ class _StatusOptionTile extends StatelessWidget {
         leading: Icon(icon, color: color, size: 28),
         title: Text(
           title,
-          style: GoogleFonts.lato(
+          style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
             color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: GoogleFonts.lato(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -1271,7 +1287,7 @@ class _OrderCardState extends State<_OrderCard> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text(
           'Decline Order Dispatch',
-          style: GoogleFonts.lato(fontWeight: FontWeight.w800),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1279,7 +1295,7 @@ class _OrderCardState extends State<_OrderCard> {
           children: [
             Text(
               'Please provide a reason to notify the admin panel for re-dispatch:',
-              style: GoogleFonts.lato(fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(fontSize: 13),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -1386,7 +1402,7 @@ class _OrderCardState extends State<_OrderCard> {
                         const SizedBox(width: 4),
                         Text(
                           isNext ? 'NEXT STOP • #1' : 'STOP #${widget.stopNumber}',
-                          style: GoogleFonts.lato(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
                             color: isNext ? Colors.white : const Color(0xFF2563EB),
@@ -1398,7 +1414,7 @@ class _OrderCardState extends State<_OrderCard> {
                   const SizedBox(width: 8),
                   Text(
                     order.orderNumber,
-                    style: GoogleFonts.lato(
+                    style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                       color: AppTheme.primaryDark,
@@ -1415,7 +1431,7 @@ class _OrderCardState extends State<_OrderCard> {
                 ),
                 child: Text(
                   order.displayStatus,
-                  style: GoogleFonts.lato(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: statusTextColor,
@@ -1435,7 +1451,7 @@ class _OrderCardState extends State<_OrderCard> {
               Expanded(
                 child: Text(
                   order.customerName,
-                  style: GoogleFonts.lato(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1459,7 +1475,7 @@ class _OrderCardState extends State<_OrderCard> {
                       const SizedBox(width: 3),
                       Text(
                         '${widget.distanceFormatted} • ${widget.durationFormatted}',
-                        style: GoogleFonts.lato(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: isNext
@@ -1475,51 +1491,51 @@ class _OrderCardState extends State<_OrderCard> {
 
           const SizedBox(height: 8),
 
-          // Delivery Address & Map / Checklist Buttons
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => MapService.openDirections(context, order),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.location_on_rounded, size: 15, color: Colors.redAccent),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            order.deliveryAddress,
-                            style: GoogleFonts.lato(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+          // Delivery Address Row (Full Width)
+          InkWell(
+            onTap: () => MapService.openDirections(context, order),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.location_on_rounded, size: 14, color: Colors.redAccent),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      order.deliveryAddress,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 6),
-              // Checklist Button
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Action Pills Meta-Bar (Checklist & Map Buttons)
+          Row(
+            children: [
               GestureDetector(
                 onTap: () => OrderChecklistSheet.show(context, order: order),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: Colors.purple.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -1528,10 +1544,10 @@ class _OrderCardState extends State<_OrderCard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.checklist_rounded, size: 13, color: Colors.purple),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       Text(
-                        '${order.items.length} items',
-                        style: GoogleFonts.lato(
+                        '${order.items.length} items to check',
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: Colors.purple,
@@ -1541,12 +1557,11 @@ class _OrderCardState extends State<_OrderCard> {
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-              // Map Button
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => MapService.openDirections(context, order),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -1555,10 +1570,10 @@ class _OrderCardState extends State<_OrderCard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.directions_rounded, size: 13, color: Color(0xFF2563EB)),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       Text(
-                        'Map',
-                        style: GoogleFonts.lato(
+                        'Directions',
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF2563EB),
@@ -1573,16 +1588,17 @@ class _OrderCardState extends State<_OrderCard> {
 
           const Divider(height: 24),
 
-          // Step-by-Step Lifecycle Actions
+          // Lifecycle Actions & Total Amount Row (Overflow Proof)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Order Total (Prepaid)',
-                    style: GoogleFonts.lato(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -1590,7 +1606,7 @@ class _OrderCardState extends State<_OrderCard> {
                   ),
                   Text(
                     'Rs. ${order.totalAmount.toStringAsFixed(2)}',
-                    style: GoogleFonts.lato(
+                    style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
@@ -1604,7 +1620,9 @@ class _OrderCardState extends State<_OrderCard> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                _buildActionButtons(order),
+                Flexible(
+                  child: _buildActionButtons(order),
+                ),
             ],
           ),
         ],
@@ -1614,26 +1632,28 @@ class _OrderCardState extends State<_OrderCard> {
 
   Widget _buildActionButtons(Order order) {
     if (order.isAssigned) {
-      return Row(
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        alignment: WrapAlignment.end,
         children: [
           OutlinedButton(
             onPressed: _showDeclineDialog,
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.redAccent,
               side: const BorderSide(color: Colors.redAccent),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(0, 38),
             ),
             child: const Text('Decline'),
           ),
-          const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () => _handleTransition('accepted'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: const Size(0, 38),
             ),
             child: const Text('Accept Order'),
           ),
@@ -1648,7 +1668,7 @@ class _OrderCardState extends State<_OrderCard> {
           backgroundColor: const Color(0xFF2563EB),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          minimumSize: const Size(0, 36),
+          minimumSize: const Size(0, 38),
         ),
       );
     } else if (order.isAtStore) {
@@ -1660,28 +1680,29 @@ class _OrderCardState extends State<_OrderCard> {
           backgroundColor: Colors.purple,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          minimumSize: const Size(0, 36),
+          minimumSize: const Size(0, 38),
         ),
       );
     } else {
       // on_delivery
-      return Row(
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        alignment: WrapAlignment.end,
         children: [
           OutlinedButton.icon(
             onPressed: () => MapService.openDirections(context, order),
-            icon: const Icon(Icons.directions_rounded, size: 16),
-            label: const Text('Navigate'),
+            icon: const Icon(Icons.directions_rounded, size: 14),
+            label: const Text('Nav'),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF2563EB),
               side: const BorderSide(color: Color(0xFF2563EB)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              minimumSize: const Size(0, 38),
             ),
           ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () {
-              // Open Proof of Delivery Sheet (Photo & Notes)
               ProofOfDeliverySheet.show(
                 context,
                 order: order,
@@ -1695,13 +1716,13 @@ class _OrderCardState extends State<_OrderCard> {
                 },
               );
             },
-            icon: const Icon(Icons.verified_rounded, size: 16),
+            icon: const Icon(Icons.verified_rounded, size: 14),
             label: const Text('Delivered'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.success,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(0, 38),
             ),
           ),
         ],
@@ -1726,7 +1747,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -1734,23 +1755,29 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.lato(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.plusJakartaSans(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.lato(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

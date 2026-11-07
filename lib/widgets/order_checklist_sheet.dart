@@ -74,15 +74,15 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                   children: [
                     Text(
                       'Item Verification',
-                      style: GoogleFonts.lato(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Text(
-                      'Check off items before leaving store for ${widget.order.orderNumber}',
-                      style: GoogleFonts.lato(
+                      'Check off items before leaving for ${widget.order.orderNumber}',
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -98,9 +98,9 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                   ),
                   child: Text(
                     '$verifiedCount / $totalCount Checked',
-                    style: GoogleFonts.lato(
+                    style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w800,
-                      fontSize: 12,
+                      fontSize: 11,
                       color: isAllDone ? AppTheme.success : const Color(0xFF2563EB),
                     ),
                   ),
@@ -122,7 +122,10 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
             const SizedBox(height: 16),
 
             // Item Checklist List
-            Flexible(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4,
+              ),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _items.length,
@@ -132,9 +135,10 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                   return CheckboxListTile(
                     value: item.isChecked,
                     activeColor: AppTheme.success,
+                    contentPadding: EdgeInsets.zero,
                     title: Text(
                       '${item.quantity}x ${item.name}',
-                      style: GoogleFonts.lato(
+                      style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                         decoration: item.isChecked ? TextDecoration.lineThrough : null,
@@ -146,7 +150,7 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                     subtitle: item.notes != null && item.notes!.isNotEmpty
                         ? Text(
                             item.notes!,
-                            style: GoogleFonts.lato(fontSize: 12, color: Colors.orange),
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.orange),
                           )
                         : null,
                     onChanged: (val) {
@@ -159,7 +163,7 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             if (isAllDone)
               Container(
@@ -177,7 +181,7 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                     Expanded(
                       child: Text(
                         'All items verified! Package ready for delivery.',
-                        style: GoogleFonts.lato(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.success,
@@ -205,7 +209,7 @@ class _OrderChecklistSheetState extends State<OrderChecklistSheet> {
                 ),
                 child: Text(
                   isAllDone ? 'Done & Ready to Deliver' : 'Close Checklist',
-                  style: GoogleFonts.lato(fontWeight: FontWeight.w800, fontSize: 15),
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
               ),
             ),
