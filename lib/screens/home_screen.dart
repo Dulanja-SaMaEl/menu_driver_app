@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchData();
-      _start15MinBackgroundSync();
+      _startLiveBackgroundSync();
       _initLocation();
     });
   }
@@ -55,19 +55,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (!mounted) return;
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
     await orderProvider.refreshLocation();
+
     LocationService().startLocationTracking(
       onPositionChanged: (position) {
         if (mounted) {
-          orderProvider.updateCurrentPosition(position);
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          final driver = auth.driver;
+          final isOnline = (driver?.status ?? '').toLowerCase() != 'offline';
+          orderProvider.updateCurrentPosition(
+            position,
+            token: driver?.token,
+            isOnline: isOnline,
+          );
         }
       },
     );
   }
 
-  // 15-minute automatic background heartbeat sync
-  void _start15MinBackgroundSync() {
+  // Active 30-second live sync loop when online for real-time order dispatch from admin
+  void _startLiveBackgroundSync() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       _quietPoll();
     });
@@ -77,12 +85,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final driver = auth.driver;
     if (driver?.token != null) {
+      final isOnline = (driver?.status ?? '').toLowerCase() != 'offline';
+      if (!isOnline) return; // Save bandwidth when offline
+
       await auth.refreshProfile();
       if (mounted) {
         final orderProvider = Provider.of<OrderProvider>(context, listen: false);
         await orderProvider.fetchLatestOrders(driver!.token!);
         await orderProvider.fetchAllOrders(driver.token!);
         await orderProvider.refreshLocation();
+        await orderProvider.syncLocationTelemetry(driver.token!, isOnline: true);
         NotificationService.syncActiveOrdersNotification(orderProvider.allOrders);
         setState(() {
           _lastSyncedAt = DateTime.now();
@@ -96,11 +108,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final driver = auth.driver;
     if (driver?.token != null) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final isOnline = (driver?.status ?? '').toLowerCase() != 'offline';
       await Future.wait([
         auth.refreshProfile(),
         orderProvider.fetchLatestOrders(driver!.token!),
         orderProvider.fetchAllOrders(driver.token!),
         orderProvider.refreshLocation(),
+        if (isOnline) orderProvider.syncLocationTelemetry(driver.token!, isOnline: true),
       ]);
       if (mounted) {
         NotificationService.syncActiveOrdersNotification(orderProvider.allOrders);
@@ -180,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 16),
                 _StatusOptionTile(
                   title: 'Available (Online)',
-                  subtitle: 'Ready to receive new orders',
+                  subtitle: 'Ready to receive new orders dispatched from admin',
                   icon: Icons.check_circle_rounded,
                   color: const Color(0xFF10B981),
                   isSelected: currentStatus == 'available',
@@ -237,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final allOrders = orderProvider.allOrders;
     final activeOrders = orderProvider.optimizedActiveOrders;
     final deliveredOrders = orderProvider.deliveredOrders;
+    final incomingAlert = orderProvider.incomingDispatchAlert;
 
     final totalOrdersCount = allOrders.length;
     final doneOrdersCount = deliveredOrders.length;
@@ -255,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       statusSecondaryColor = const Color(0xFF1D4ED8);
       statusTextColor = Colors.white;
       statusTitle = 'On Delivery';
-      statusSubtitle = 'Active delivery order in progress';
+      statusSubtitle = 'Active delivery in progress • GPS streaming';
       statusIcon = Icons.two_wheeler_rounded;
     } else if (rawStatus == 'busy') {
       statusPrimaryColor = const Color(0xFFF59E0B);
@@ -268,15 +283,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       statusPrimaryColor = AppTheme.primary;
       statusSecondaryColor = AppTheme.primaryDark;
       statusTextColor = Colors.black;
-      statusTitle = 'Online & Available';
-      statusSubtitle = 'Ready for new order assignments';
+      statusTitle = 'Online & Connected';
+      statusSubtitle = 'Ready for dispatches from the-menu-admin';
       statusIcon = Icons.electric_bolt_rounded;
     } else {
       statusPrimaryColor = Theme.of(context).colorScheme.surface;
       statusSecondaryColor = Theme.of(context).colorScheme.surface;
       statusTextColor = Theme.of(context).colorScheme.onSurface;
       statusTitle = 'You are Offline';
-      statusSubtitle = 'Turn on switch to start receiving orders';
+      statusSubtitle = 'Turn on switch to connect with admin panel';
       statusIcon = Icons.power_settings_new_rounded;
     }
 
@@ -414,7 +429,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 const SizedBox(height: 14),
 
-                // Sync status indicator bar with GPS Status
+                // Sync status indicator bar with GPS & Server Connection Status
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -428,8 +443,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         const SizedBox(width: 6),
                         Text(
                           _lastSyncedAt != null
-                              ? 'Updated ${_formatTime(_lastSyncedAt!)}'
-                              : 'Auto-syncs every 15 min',
+                              ? 'Live sync ${_formatTime(_lastSyncedAt!)}'
+                              : 'Auto-syncs every 30s',
                           style: GoogleFonts.lato(
                             fontSize: 11,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -468,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              orderProvider.isLocationPermissionGranted ? 'GPS Live' : 'Enable GPS',
+                              orderProvider.isLocationPermissionGranted ? 'Telemetry Active' : 'Enable GPS',
                               style: GoogleFonts.lato(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -593,6 +608,91 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                 ),
+
+                // Incoming Dispatch Alert Banner (When admin assigns a new order)
+                if (incomingAlert != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF10B981), width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.notifications_active_rounded,
+                                    color: Color(0xFF10B981), size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'New Dispatch from Admin!',
+                                  style: GoogleFonts.lato(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () => orderProvider.dismissIncomingAlert(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${incomingAlert.orderNumber} • ${incomingAlert.customerName}',
+                          style: GoogleFonts.lato(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          incomingAlert.deliveryAddress,
+                          style: GoogleFonts.lato(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => orderProvider.declineOrder(
+                                driver!.token!,
+                                incomingAlert.id,
+                                reason: 'Driver busy',
+                              ),
+                              child: const Text('Decline', style: TextStyle(color: Colors.redAccent)),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () => orderProvider.acceptOrder(
+                                driver!.token!,
+                                incomingAlert.id,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Accept Order'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 24),
 
@@ -1048,7 +1148,7 @@ class _OrderCard extends StatefulWidget {
 class _OrderCardState extends State<_OrderCard> {
   bool _isUpdating = false;
 
-  Future<void> _handleStatusUpdate(String nextStatus) async {
+  Future<void> _handleTransition(String nextStatus, {String? reason}) async {
     if (widget.token == null) return;
     setState(() => _isUpdating = true);
 
@@ -1057,6 +1157,7 @@ class _OrderCardState extends State<_OrderCard> {
       widget.token!,
       widget.order.id,
       nextStatus,
+      reason: reason,
     );
 
     if (mounted) {
@@ -1071,11 +1172,80 @@ class _OrderCardState extends State<_OrderCard> {
     }
   }
 
+  void _showDeclineDialog() {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Decline Order Dispatch',
+          style: GoogleFonts.lato(fontWeight: FontWeight.w800),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Please provide a reason to notify the admin panel for re-dispatch:',
+              style: GoogleFonts.lato(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              decoration: const InputDecoration(
+                hintText: 'e.g., Heavy rain, Vehicle issue, Out of range',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleTransition('cancelled', reason: reasonCtrl.text);
+            },
+            child: const Text('Confirm Decline', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
     final isNext = widget.isNextStop;
     final hasValidCoords = order.hasCoordinates;
+
+    // Status Pill Colors
+    Color statusBgColor;
+    Color statusTextColor;
+    if (order.isDelivered) {
+      statusBgColor = AppTheme.success.withValues(alpha: 0.15);
+      statusTextColor = AppTheme.success;
+    } else if (order.isAssigned) {
+      statusBgColor = Colors.amber.withValues(alpha: 0.15);
+      statusTextColor = Colors.amber[800] ?? Colors.amber;
+    } else if (order.isAccepted) {
+      statusBgColor = const Color(0xFF2563EB).withValues(alpha: 0.15);
+      statusTextColor = const Color(0xFF2563EB);
+    } else if (order.isAtStore) {
+      statusBgColor = Colors.purple.withValues(alpha: 0.15);
+      statusTextColor = Colors.purple;
+    } else if (order.isOnDelivery) {
+      statusBgColor = const Color(0xFF10B981).withValues(alpha: 0.15);
+      statusTextColor = const Color(0xFF10B981);
+    } else {
+      statusBgColor = Colors.grey.withValues(alpha: 0.15);
+      statusTextColor = Colors.grey;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1146,10 +1316,42 @@ class _OrderCardState extends State<_OrderCard> {
                   ),
                 ],
               ),
-              // Proximity Chip
+              // Status Pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusBgColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  order.displayStatus,
+                  style: GoogleFonts.lato(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: statusTextColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Customer details & Proximity chip
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  order.customerName,
+                  style: GoogleFonts.lato(fontWeight: FontWeight.w600, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               if (hasValidCoords && widget.distanceFormatted != '--')
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: isNext
                         ? const Color(0xFF10B981).withValues(alpha: 0.12)
@@ -1178,31 +1380,6 @@ class _OrderCardState extends State<_OrderCard> {
                     ],
                   ),
                 ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Customer details
-          Row(
-            children: [
-              const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  order.customerName,
-                  style: GoogleFonts.lato(fontWeight: FontWeight.w600, fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (order.customerPhone.isNotEmpty && order.customerPhone != '-') ...[
-                Icon(Icons.phone_outlined, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  order.customerPhone,
-                  style: GoogleFonts.lato(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
             ],
           ),
 
@@ -1268,7 +1445,7 @@ class _OrderCardState extends State<_OrderCard> {
 
           const Divider(height: 24),
 
-          // Bottom Price & Action Buttons
+          // Step-by-Step Lifecycle Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1292,47 +1469,101 @@ class _OrderCardState extends State<_OrderCard> {
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  // Navigate Button
-                  OutlinedButton.icon(
-                    onPressed: () => MapService.openDirections(context, order),
-                    icon: const Icon(Icons.directions_rounded, size: 16),
-                    label: const Text('Navigate'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
-                      side: const BorderSide(color: Color(0xFF2563EB)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      minimumSize: const Size(0, 36),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Delivered Button
-                  ElevatedButton(
-                    onPressed: _isUpdating ? null : () => _handleStatusUpdate('delivered'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.success,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(90, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: _isUpdating
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Delivered', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+              if (_isUpdating)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                _buildActionButtons(order),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildActionButtons(Order order) {
+    if (order.isAssigned) {
+      return Row(
+        children: [
+          OutlinedButton(
+            onPressed: _showDeclineDialog,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.redAccent,
+              side: const BorderSide(color: Colors.redAccent),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+            child: const Text('Decline'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _handleTransition('accepted'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+            child: const Text('Accept Order'),
+          ),
+        ],
+      );
+    } else if (order.isAccepted) {
+      return ElevatedButton.icon(
+        onPressed: () => _handleTransition('at_store'),
+        icon: const Icon(Icons.storefront_rounded, size: 16),
+        label: const Text('At Store'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          minimumSize: const Size(0, 36),
+        ),
+      );
+    } else if (order.isAtStore) {
+      return ElevatedButton.icon(
+        onPressed: () => _handleTransition('on_delivery'),
+        icon: const Icon(Icons.check_box_outlined, size: 16),
+        label: const Text('Picked Up'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.purple,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          minimumSize: const Size(0, 36),
+        ),
+      );
+    } else {
+      // on_delivery
+      return Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => MapService.openDirections(context, order),
+            icon: const Icon(Icons.directions_rounded, size: 16),
+            label: const Text('Navigate'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFF2563EB)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _handleTransition('delivered'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.success,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+            child: const Text('Delivered'),
+          ),
+        ],
+      );
+    }
   }
 }
 

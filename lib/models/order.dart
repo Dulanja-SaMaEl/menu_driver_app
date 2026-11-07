@@ -29,11 +29,48 @@ class Order {
       latitude != 0.0 &&
       longitude != 0.0;
 
-  bool get isActive =>
-      status.toLowerCase() == 'assigned' ||
-      status.toLowerCase() == 'on_delivery';
+  bool get isActive {
+    final s = status.toLowerCase();
+    return s == 'assigned' ||
+        s == 'accepted' ||
+        s == 'at_store' ||
+        s == 'picked_up' ||
+        s == 'on_delivery';
+  }
 
+  bool get isAssigned => status.toLowerCase() == 'assigned';
+  bool get isAccepted => status.toLowerCase() == 'accepted';
+  bool get isAtStore => status.toLowerCase() == 'at_store';
+  bool get isOnDelivery =>
+      status.toLowerCase() == 'on_delivery' ||
+      status.toLowerCase() == 'picked_up';
   bool get isDelivered => status.toLowerCase() == 'delivered';
+  bool get isCancelled =>
+      status.toLowerCase() == 'cancelled' ||
+      status.toLowerCase() == 'failed' ||
+      status.toLowerCase() == 'rejected';
+
+  String get displayStatus {
+    switch (status.toLowerCase()) {
+      case 'assigned':
+        return 'NEW DISPATCH';
+      case 'accepted':
+        return 'ACCEPTED';
+      case 'at_store':
+        return 'AT STORE';
+      case 'picked_up':
+      case 'on_delivery':
+        return 'ON DELIVERY';
+      case 'delivered':
+        return 'DELIVERED';
+      case 'cancelled':
+      case 'failed':
+      case 'rejected':
+        return 'CANCELLED';
+      default:
+        return status.toUpperCase().replaceAll('_', ' ');
+    }
+  }
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
@@ -69,9 +106,7 @@ class Order {
                   json['total']?.toString() ??
                   '0') ??
           0.0,
-      status: ((json['status'] ?? 'on_delivery').toString().toLowerCase() == 'assigned')
-          ? 'on_delivery'
-          : (json['status'] ?? 'on_delivery').toString(),
+      status: (json['status'] ?? 'assigned').toString().toLowerCase(),
       createdAt: json['created_at'] != null
           ? (DateTime.tryParse(json['created_at'].toString()) ??
               DateTime.now())

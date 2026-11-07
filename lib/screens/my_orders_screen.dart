@@ -105,7 +105,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           const Icon(Icons.directions_rounded, size: 14, color: Color(0xFF2563EB)),
                           const SizedBox(width: 4),
                           Text(
-                            'Map',
+                            'Navigate',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -119,26 +119,26 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
                 const SizedBox(height: 12),
                 _detailRow(
-                  Icons.access_time_rounded,
-                  'Assigned At',
-                  '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')} (${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year})',
+                  Icons.calendar_today_rounded,
+                  'Assigned Time',
+                  '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')} • ${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                 ),
                 const Divider(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total Amount',
+                      'Total Cash to Collect',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     Text(
                       'Rs. ${order.totalAmount.toStringAsFixed(2)}',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
@@ -146,6 +146,33 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
+                if (order.isActive) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final token = context.read<AuthProvider>().driver?.token;
+                        if (token != null) {
+                          await context.read<OrderProvider>().updateStatus(token, order.id, 'delivered');
+                          _refresh();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.success,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.check_circle_rounded),
+                      label: Text(
+                        'Mark as Delivered',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ],
             ),
           ),
@@ -158,7 +185,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppTheme.primaryDark),
+        Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -167,7 +194,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               Text(
                 label,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   fontWeight: FontWeight.w600,
                 ),
@@ -177,7 +204,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 value,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
@@ -197,11 +224,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
     // Filter list
     final filteredOrders = allOrders.where((order) {
-      final status = order.status.toLowerCase();
       final matchesFilter = switch (_selectedFilter) {
-        'active' => status == 'assigned' || status == 'on_delivery',
-        'delivered' => status == 'delivered',
-        'cancelled' => status == 'cancelled',
+        'active' => order.isActive,
+        'delivered' => order.isDelivered,
+        'cancelled' => order.isCancelled,
         _ => true,
       };
 
@@ -261,7 +287,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     child: _StatCard(
                       icon: Icons.check_circle_outline_rounded,
                       label: 'Delivered',
-                      value: allOrders.where((o) => o.status.toLowerCase() == 'delivered').length.toString(),
+                      value: allOrders.where((o) => o.isDelivered).length.toString(),
                       color: AppTheme.success,
                     ),
                   ),
@@ -305,17 +331,17 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         const SizedBox(width: 8),
                         _filterChip(
                           'active',
-                          'Active (${allOrders.where((o) => o.status == 'assigned' || o.status == 'on_delivery').length})',
+                          'Active (${allOrders.where((o) => o.isActive).length})',
                         ),
                         const SizedBox(width: 8),
                         _filterChip(
                           'delivered',
-                          'Delivered (${allOrders.where((o) => o.status == 'delivered').length})',
+                          'Delivered (${allOrders.where((o) => o.isDelivered).length})',
                         ),
                         const SizedBox(width: 8),
                         _filterChip(
                           'cancelled',
-                          'Cancelled (${allOrders.where((o) => o.status == 'cancelled').length})',
+                          'Cancelled (${allOrders.where((o) => o.isCancelled).length})',
                         ),
                       ],
                     ),
@@ -457,24 +483,16 @@ class _OrderListItemState extends State<_OrderListItem> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final status = order.status.toLowerCase();
 
     return InkWell(
       onTap: widget.onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Theme.of(context).dividerColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -605,7 +623,7 @@ class _OrderListItemState extends State<_OrderListItem> {
                     ),
                   ],
                 ),
-                if (status == 'assigned' || status == 'on_delivery')
+                if (order.isActive)
                   ElevatedButton(
                     onPressed: _isUpdating ? null : () => _handleStatusUpdate('delivered'),
                     style: ElevatedButton.styleFrom(
@@ -651,23 +669,57 @@ class _StatusChip extends StatelessWidget {
     Color color;
     final normalized = status.toLowerCase();
     switch (normalized) {
-      case 'on_delivery':
       case 'assigned':
-        color = Colors.orange;
+        color = Colors.amber[800] ?? Colors.amber;
+        break;
+      case 'accepted':
+        color = const Color(0xFF2563EB);
+        break;
+      case 'at_store':
+        color = Colors.purple;
+        break;
+      case 'on_delivery':
+      case 'picked_up':
+        color = const Color(0xFF10B981);
         break;
       case 'delivered':
         color = AppTheme.success;
         break;
       case 'cancelled':
+      case 'failed':
+      case 'rejected':
         color = AppTheme.error;
         break;
       default:
         color = Colors.grey;
     }
 
-    final displayText = (normalized == 'assigned' || normalized == 'on_delivery')
-        ? 'ON DELIVERY'
-        : status.toUpperCase().replaceAll('_', ' ');
+    String displayText;
+    switch (normalized) {
+      case 'assigned':
+        displayText = 'ASSIGNED';
+        break;
+      case 'accepted':
+        displayText = 'ACCEPTED';
+        break;
+      case 'at_store':
+        displayText = 'AT STORE';
+        break;
+      case 'on_delivery':
+      case 'picked_up':
+        displayText = 'ON DELIVERY';
+        break;
+      case 'delivered':
+        displayText = 'DELIVERED';
+        break;
+      case 'cancelled':
+      case 'failed':
+      case 'rejected':
+        displayText = 'CANCELLED';
+        break;
+      default:
+        displayText = status.toUpperCase().replaceAll('_', ' ');
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -737,4 +789,3 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-

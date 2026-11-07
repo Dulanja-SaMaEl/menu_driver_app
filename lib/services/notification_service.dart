@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:http/http.dart' as http;
 import '../models/order.dart';
 import 'api_service.dart';
 
@@ -23,6 +21,9 @@ class NotificationService {
   static const String channelId = 'active_delivery_channel';
   static const String channelName = 'Active Deliveries';
   static const String actionMarkDelivered = 'action_mark_delivered';
+
+  static const String dispatchChannelId = 'dispatch_alert_channel';
+  static const String dispatchChannelName = 'New Dispatches';
 
   static Function(int orderId)? onOrderDeliveredCallback;
   static bool _isInitialized = false;
@@ -62,7 +63,7 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    // Create Notification Channel for Android
+    // Create Notification Channels for Android
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
@@ -77,6 +78,16 @@ class NotificationService {
       );
       await androidPlugin.createNotificationChannel(channel);
 
+      const AndroidNotificationChannel dispatchChannel = AndroidNotificationChannel(
+        dispatchChannelId,
+        dispatchChannelName,
+        description: 'Heads-up alert when admin dispatches a new order',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+      await androidPlugin.createNotificationChannel(dispatchChannel);
+
       // Request Android 13+ Notification Permission
       await androidPlugin.requestNotificationsPermission();
     }
@@ -84,28 +95,55 @@ class NotificationService {
     _isInitialized = true;
   }
 
+  /// Alert the driver of a newly assigned order from the admin
+  static Future<void> showNewOrderAlert(Order order) async {
+    if (kIsWeb) return;
+    try {
+      final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        dispatchChannelId,
+        dispatchChannelName,
+        channelDescription: 'Alert for newly assigned orders',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        color: const Color(0xFF10B981),
+        styleInformation: BigTextStyleInformation(
+          'Customer: ${order.customerName}\nAddress: ${order.deliveryAddress}\nTotal: Rs. ${order.totalAmount.toStringAsFixed(2)}',
+          contentTitle: '🛵 New Order Assigned: ${order.orderNumber}',
+          summaryText: 'Action Required',
+        ),
+      );
+
+      final NotificationDetails details = NotificationDetails(android: androidDetails);
+      await _plugin.show(
+        id: order.id,
+        title: '🛵 New Order Assigned: ${order.orderNumber}',
+        body: '${order.customerName} • ${order.deliveryAddress}',
+        notificationDetails: details,
+        payload: '${order.id}',
+      );
+    } catch (_) {}
+  }
+
   /// Syncs the ongoing notification with current active orders in real-time
   static Future<void> syncActiveOrdersNotification(List<Order> orders) async {
     if (kIsWeb) return;
 
-    final activeOrders = orders.where((o) {
-      final s = o.status.toLowerCase();
-      return s == 'on_delivery' || s == 'assigned';
-    }).toList();
+    final activeOrders = orders.where((o) => o.isActive).toList();
 
     if (activeOrders.isEmpty) {
       await cancelActiveNotification();
       return;
     }
 
-    // Show the first active order with actions
     final currentOrder = activeOrders.first;
     final otherOrdersCount = activeOrders.length - 1;
 
-    final String title = '🚚 Active Order: ${currentOrder.orderNumber}';
+    final String title = '🚚 Stop #1: ${currentOrder.orderNumber}';
     final String address = currentOrder.deliveryAddress.trim();
     final String body =
-        '${currentOrder.customerName} • $address\nRs. ${currentOrder.totalAmount.toStringAsFixed(2)}${otherOrdersCount > 0 ? ' (+$otherOrdersCount more)' : ''}';
+        '${currentOrder.customerName} • $address\nRs. ${currentOrder.totalAmount.toStringAsFixed(2)}${otherOrdersCount > 0 ? ' (+$otherOrdersCount more in queue)' : ''}';
 
     const AndroidNotificationAction deliveredAction = AndroidNotificationAction(
       actionMarkDelivered,
@@ -127,7 +165,7 @@ class NotificationService {
       styleInformation: BigTextStyleInformation(
         body,
         contentTitle: title,
-        summaryText: 'Delivery in progress',
+        summaryText: 'Multi-stop delivery in progress',
       ),
     );
 
@@ -198,17 +236,14 @@ class NotificationService {
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: 'auth_token');
       if (token != null) {
-        final response = await http.patch(
-          Uri.parse('${ApiService.baseUrl}/orders/$orderId/status'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode({'status': 'delivered'}),
+        final api = ApiService();
+        final res = await api.updateOrderStatus(
+          token: token,
+          orderId: orderId,
+          status: 'delivered',
         );
 
-        if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (res['success'] == true) {
           Fluttertoast.showToast(
             msg: 'Order marked as Delivered! 🎉',
             toastLength: Toast.LENGTH_SHORT,
@@ -216,7 +251,6 @@ class NotificationService {
             textColor: Colors.white,
           );
 
-          // Clear or refresh active notification
           final plugin = FlutterLocalNotificationsPlugin();
           await plugin.cancel(id: activeNotificationId);
         }

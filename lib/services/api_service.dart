@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://menusrilanka.com/api/driver-app-api';
+  static const String defaultBaseUrl = 'https://menusrilanka.com/api/driver-app-api';
+  static String _baseUrl = defaultBaseUrl;
+
+  static String get baseUrl => _baseUrl;
 
   static const Map<String, String> _headers = {
     'Content-Type': 'application/json',
@@ -14,6 +18,39 @@ class ApiService {
         ..._headers,
         'Authorization': 'Bearer $token',
       };
+
+  /// Initialize configured base URL from storage
+  static Future<void> initBaseUrl() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUrl = prefs.getString('driver_api_base_url');
+      if (savedUrl != null && savedUrl.trim().isNotEmpty) {
+        _baseUrl = savedUrl.trim();
+        if (kDebugMode) print('Loaded custom API base URL: $_baseUrl');
+      }
+    } catch (_) {}
+  }
+
+  /// Update base URL (useful for connecting to local the-menu-admin or staging)
+  static Future<void> setBaseUrl(String newUrl) async {
+    _baseUrl = newUrl.trim();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('driver_api_base_url', _baseUrl);
+      if (kDebugMode) print('Saved new API base URL: $_baseUrl');
+    } catch (_) {}
+  }
+
+  /// Test connectivity to the specified the-menu-admin endpoint
+  static Future<bool> testServerConnection(String testUrl) async {
+    try {
+      final uri = Uri.parse(testUrl.endsWith('/') ? testUrl.substring(0, testUrl.length - 1) : testUrl);
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      return response.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // --- Register ---
   Future<Map<String, dynamic>> register({
@@ -166,28 +203,115 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  /// Update order status with intelligent REST fallbacks (PATCH / POST)
   Future<Map<String, dynamic>> updateOrderStatus({
     required String token,
     required int orderId,
     required String status,
+    String? reason,
   }) async {
-    final response = await http.patch(
-      Uri.parse('$baseUrl/orders/$orderId/status'),
-      headers: _authHeaders(token),
-      body: jsonEncode({'status': status}),
-    );
-    return _handleResponse(response);
+    final body = jsonEncode({
+      'status': status,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+    });
+
+    // 1. Try PATCH /orders/{id}/status
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/orders/$orderId/status'),
+        headers: _authHeaders(token),
+        body: body,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return _handleResponse(response);
+      }
+      if (response.statusCode != 404 && response.statusCode != 405) {
+        return _handleResponse(response);
+      }
+    } catch (_) {}
+
+    // 2. Try POST /orders/{id}/status
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/status'),
+        headers: _authHeaders(token),
+        body: body,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return _handleResponse(response);
+      }
+      if (response.statusCode != 404 && response.statusCode != 405) {
+        return _handleResponse(response);
+      }
+    } catch (_) {}
+
+    // 3. Try POST /orders/{id}/{status}
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/$status'),
+        headers: _authHeaders(token),
+        body: body,
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      if (kDebugMode) print('DEBUG: Error updating order status: $e');
+      return {'success': false, 'message': 'Network error updating order status'};
+    }
   }
 
-  // --- Driver Status ---
+  // --- Real-time Driver Telemetry to the-menu-admin ---
+  Future<bool> sendDriverTelemetry({
+    required String token,
+    required double latitude,
+    required double longitude,
+    double? heading,
+    double? speed,
+    double? accuracy,
+  }) async {
+    final payload = jsonEncode({
+      'latitude': latitude,
+      'longitude': longitude,
+      'heading': heading ?? 0.0,
+      'speed': speed ?? 0.0,
+      'accuracy': accuracy ?? 0.0,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+
+    // 1. Try POST /driver/location
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/driver/location'),
+        headers: _authHeaders(token),
+        body: payload,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+    } catch (_) {}
+
+    // 2. Try POST /driver/telemetry
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/driver/telemetry'),
+        headers: _authHeaders(token),
+        body: payload,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  // --- Driver Shift Status Sync ---
   Future<void> updateDriverStatus({
     required String token,
     required int driverId,
     required String status,
   }) async {
     try {
-      if (kDebugMode) print('DEBUG: Attempting to update status to $status');
-      
+      if (kDebugMode) print('DEBUG: Updating driver status to $status');
       final response = await http.post(
         Uri.parse('$baseUrl/driver/status'),
         headers: _authHeaders(token),
@@ -196,17 +320,13 @@ class ApiService {
           'status': status,
         }),
       );
-      if (response.statusCode == 200) {
-        if (kDebugMode) print('DEBUG: Status updated successfully');
-      } else {
+      if (response.statusCode != 200) {
         if (kDebugMode) {
-          print('DEBUG: Failed to update status: ${response.statusCode} - ${response.body}');
+          print('DEBUG: Failed to update status: ${response.statusCode}');
         }
-        throw Exception('Failed to update status');
       }
     } catch (e) {
-      if (kDebugMode) print('DEBUG: Error updating status - $e');
-      rethrow;
+      if (kDebugMode) print('DEBUG: Error updating driver status: $e');
     }
   }
 

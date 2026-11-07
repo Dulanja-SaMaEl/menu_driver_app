@@ -18,6 +18,11 @@ class OrderProvider extends ChangeNotifier {
   bool _isLocationPermissionGranted = false;
   bool _sortByProximity = true; // Nearest-first enabled by default
 
+  // Incoming Dispatch Notification State
+  final Set<int> _knownOrderIds = {};
+  Order? _incomingDispatchAlert;
+  DateTime? _lastTelemetrySentAt;
+
   List<Order> get allOrders => _allOrders;
   List<Order> get latestOrders => _latestOrders;
   bool get isLoading => _isLoading;
@@ -26,6 +31,13 @@ class OrderProvider extends ChangeNotifier {
   Position? get currentPosition => _currentPosition;
   bool get isLocationPermissionGranted => _isLocationPermissionGranted;
   bool get sortByProximity => _sortByProximity;
+
+  Order? get incomingDispatchAlert => _incomingDispatchAlert;
+
+  void dismissIncomingAlert() {
+    _incomingDispatchAlert = null;
+    notifyListeners();
+  }
 
   void toggleProximitySorting() {
     _sortByProximity = !_sortByProximity;
@@ -48,13 +60,38 @@ class OrderProvider extends ChangeNotifier {
   }
 
   /// Update position when stream emits new location
-  void updateCurrentPosition(Position position) {
+  void updateCurrentPosition(Position position, {String? token, bool isOnline = true}) {
     _currentPosition = position;
     _isLocationPermissionGranted = true;
     notifyListeners();
+
+    // Stream telemetry to the-menu-admin when active
+    if (token != null && isOnline) {
+      syncLocationTelemetry(token, isOnline: isOnline);
+    }
   }
 
-  /// Active orders (assigned or on_delivery)
+  /// Sends throttled GPS telemetry to the-menu-admin
+  Future<void> syncLocationTelemetry(String token, {bool isOnline = true}) async {
+    if (!isOnline || _currentPosition == null) return;
+    final now = DateTime.now();
+    if (_lastTelemetrySentAt != null &&
+        now.difference(_lastTelemetrySentAt!).inSeconds < 25) {
+      return; // Throttled to 25 seconds interval
+    }
+    _lastTelemetrySentAt = now;
+
+    await _api.sendDriverTelemetry(
+      token: token,
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      heading: _currentPosition!.heading,
+      speed: _currentPosition!.speed,
+      accuracy: _currentPosition!.accuracy,
+    );
+  }
+
+  /// Active orders (assigned, accepted, at_store, or on_delivery)
   List<Order> get activeOrders {
     return _allOrders.where((o) => o.isActive).toList();
   }
@@ -145,7 +182,20 @@ class OrderProvider extends ChangeNotifier {
       final result = await _api.getOrders(token);
       if (result['success'] == true) {
         final List<dynamic> ordersJson = result['orders'];
-        _allOrders = ordersJson.map((json) => Order.fromJson(json)).toList();
+        final fetched = ordersJson.map((json) => Order.fromJson(json)).toList();
+
+        // Check for new incoming dispatch from admin
+        final newDispatches = fetched
+            .where((o) => o.isAssigned && !_knownOrderIds.contains(o.id))
+            .toList();
+
+        if (_knownOrderIds.isNotEmpty && newDispatches.isNotEmpty) {
+          _incomingDispatchAlert = newDispatches.first;
+          NotificationService.showNewOrderAlert(newDispatches.first);
+        }
+
+        _knownOrderIds.addAll(fetched.map((o) => o.id));
+        _allOrders = fetched;
         NotificationService.syncActiveOrdersNotification(_allOrders);
       } else {
         _errorMessage = result['message'] ?? 'Failed to fetch orders';
@@ -167,7 +217,20 @@ class OrderProvider extends ChangeNotifier {
       final result = await _api.getLatestOrders(token);
       if (result['success'] == true) {
         final List<dynamic> ordersJson = result['orders'];
-        _latestOrders = ordersJson.map((json) => Order.fromJson(json)).toList();
+        final fetched = ordersJson.map((json) => Order.fromJson(json)).toList();
+
+        final newDispatches = fetched
+            .where((o) => o.isAssigned && !_knownOrderIds.contains(o.id))
+            .toList();
+
+        if (_knownOrderIds.isNotEmpty && newDispatches.isNotEmpty && _incomingDispatchAlert == null) {
+          _incomingDispatchAlert = newDispatches.first;
+          NotificationService.showNewOrderAlert(newDispatches.first);
+        }
+
+        _knownOrderIds.addAll(fetched.map((o) => o.id));
+        _latestOrders = fetched;
+
         if (_allOrders.isEmpty) {
           NotificationService.syncActiveOrdersNotification(_latestOrders);
         }
@@ -182,19 +245,53 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateStatus(String token, int orderId, String status) async {
+  // --- Step-by-Step Order Lifecycle Transitions ---
+
+  Future<bool> acceptOrder(String token, int orderId) async {
+    return updateStatus(token, orderId, 'accepted');
+  }
+
+  Future<bool> markArrivedAtStore(String token, int orderId) async {
+    return updateStatus(token, orderId, 'at_store');
+  }
+
+  Future<bool> markPickedUp(String token, int orderId) async {
+    return updateStatus(token, orderId, 'on_delivery');
+  }
+
+  Future<bool> markDelivered(String token, int orderId) async {
+    return updateStatus(token, orderId, 'delivered');
+  }
+
+  Future<bool> declineOrder(String token, int orderId, {String? reason}) async {
+    return updateStatus(token, orderId, 'cancelled', reason: reason);
+  }
+
+  Future<bool> updateStatus(
+    String token,
+    int orderId,
+    String status, {
+    String? reason,
+  }) async {
     try {
       final result = await _api.updateOrderStatus(
         token: token,
         orderId: orderId,
         status: status,
+        reason: reason,
       );
 
       if (result['success'] == true) {
+        // Dismiss alert if it was about this order
+        if (_incomingDispatchAlert?.id == orderId) {
+          _incomingDispatchAlert = null;
+        }
+
         // Refresh orders locally
         await fetchLatestOrders(token);
         await fetchAllOrders(token);
-        // Refresh location immediately to dynamically re-evaluate the next nearest stop
+
+        // Dynamically re-evaluate GPS position & nearest stop
         await refreshLocation();
         NotificationService.syncActiveOrdersNotification(_allOrders);
         return true;

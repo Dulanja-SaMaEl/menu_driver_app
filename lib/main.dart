@@ -12,6 +12,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/my_orders_screen.dart';
+import 'services/api_service.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -19,6 +20,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
   ));
+  await ApiService.initBaseUrl();
   await NotificationService.init();
   runApp(const TheMenuDriverApp());
 }
