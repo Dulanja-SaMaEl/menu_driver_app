@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String defaultBaseUrl = 'https://menusrilanka.com/api/driver-app-api';
+  static const String defaultBaseUrl = 'https://the-menu-admin.onrender.com/api/driver-app-api';
   static String _baseUrl = defaultBaseUrl;
 
   static String get baseUrl => _baseUrl;

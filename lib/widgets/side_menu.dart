@@ -54,7 +54,7 @@ class SideMenu extends StatelessWidget {
                       controller: textCtrl,
                       style: GoogleFonts.plusJakartaSans(fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'https://menusrilanka.com/api/driver-app-api',
+                        hintText: 'https://the-menu-admin.onrender.com/api/driver-app-api',
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -70,10 +70,19 @@ class SideMenu extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         ActionChip(
-                          label: const Text('Live Production', style: TextStyle(fontSize: 10)),
+                          label: const Text('Render Service', style: TextStyle(fontSize: 10)),
                           onPressed: () {
                             setDialogState(() {
-                              textCtrl.text = ApiService.defaultBaseUrl;
+                              textCtrl.text = 'https://the-menu-admin.onrender.com/api/driver-app-api';
+                              testResult = null;
+                            });
+                          },
+                        ),
+                        ActionChip(
+                          label: const Text('Menu Sri Lanka', style: TextStyle(fontSize: 10)),
+                          onPressed: () {
+                            setDialogState(() {
+                              textCtrl.text = 'https://menusrilanka.com/api/driver-app-api';
                               testResult = null;
                             });
                           },
