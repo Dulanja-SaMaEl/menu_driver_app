@@ -290,14 +290,19 @@ class _EarningsScreenState extends State<EarningsScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    order.orderNumber,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Theme.of(context).colorScheme.onSurface,
+                                  Expanded(
+                                    child: Text(
+                                      order.orderNumber,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     '+ Rs. ${baseFeePerDrop.toStringAsFixed(0)}',
                                     style: GoogleFonts.plusJakartaSans(
@@ -313,10 +318,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                 '${order.customerName} • ${order.deliveryAddress}',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.6),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

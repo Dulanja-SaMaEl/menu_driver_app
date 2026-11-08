@@ -850,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '$activeOrdersCount Stops',
+                              activeOrdersCount == 1 ? '1 Stop' : '$activeOrdersCount Stops',
                               style: GoogleFonts.plusJakartaSans(
                                 color: Colors.black,
                                 fontSize: 11,
@@ -1379,51 +1379,51 @@ class _OrderCardState extends State<_OrderCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with Stop Badge & Order Number
+          // Header with Stop Badge, Order Number & Status Pill (Overflow-proof)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isNext
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFF2563EB).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isNext
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFF2563EB).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isNext ? Icons.navigation_rounded : Icons.location_pin,
+                      color: isNext ? Colors.white : const Color(0xFF2563EB),
+                      size: 12,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isNext ? Icons.navigation_rounded : Icons.location_pin,
-                          color: isNext ? Colors.white : const Color(0xFF2563EB),
-                          size: 13,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isNext ? 'NEXT STOP • #1' : 'STOP #${widget.stopNumber}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: isNext ? Colors.white : const Color(0xFF2563EB),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 4),
+                    Text(
+                      isNext ? 'NEXT STOP • #1' : 'STOP #${widget.stopNumber}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: isNext ? Colors.white : const Color(0xFF2563EB),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    order.orderNumber,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: AppTheme.primaryDark,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  order.orderNumber,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppTheme.primaryDark,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
               // Status Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1588,9 +1588,9 @@ class _OrderCardState extends State<_OrderCard> {
             ],
           ),
 
-          const Divider(height: 24),
+          const Divider(height: 20),
 
-          // Lifecycle Actions & Total Amount Row (Overflow Proof)
+          // Total & Update Progress
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1611,22 +1611,24 @@ class _OrderCardState extends State<_OrderCard> {
                     style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],
               ),
               if (_isUpdating)
                 const SizedBox(
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                Flexible(
-                  child: _buildActionButtons(order),
                 ),
             ],
           ),
+
+          if (!_isUpdating) ...[
+            const SizedBox(height: 12),
+            _buildActionButtons(order),
+          ],
         ],
       ),
     );
@@ -1634,97 +1636,152 @@ class _OrderCardState extends State<_OrderCard> {
 
   Widget _buildActionButtons(Order order) {
     if (order.isAssigned) {
-      return Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        alignment: WrapAlignment.end,
+      return Row(
         children: [
-          OutlinedButton(
-            onPressed: _showDeclineDialog,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.redAccent,
-              side: const BorderSide(color: Colors.redAccent),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: const Size(0, 38),
+          Expanded(
+            flex: 2,
+            child: OutlinedButton(
+              onPressed: _showDeclineDialog,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Decline',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ),
-            child: const Text('Decline'),
           ),
-          ElevatedButton(
-            onPressed: () => _handleTransition('accepted'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: const Size(0, 38),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: ElevatedButton.icon(
+              onPressed: () => _handleTransition('accepted'),
+              icon: const Icon(Icons.check_circle_rounded, size: 16),
+              label: Text(
+                'Accept Order',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
             ),
-            child: const Text('Accept Order'),
           ),
         ],
       );
     } else if (order.isAccepted) {
-      return ElevatedButton.icon(
-        onPressed: () => _handleTransition('at_store'),
-        icon: const Icon(Icons.storefront_rounded, size: 16),
-        label: const Text('At Store'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2563EB),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          minimumSize: const Size(0, 38),
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _handleTransition('at_store'),
+          icon: const Icon(Icons.storefront_rounded, size: 16),
+          label: Text(
+            'Arrived At Store',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2563EB),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
+          ),
         ),
       );
     } else if (order.isAtStore) {
-      return ElevatedButton.icon(
-        onPressed: () => _handleTransition('on_delivery'),
-        icon: const Icon(Icons.check_box_outlined, size: 16),
-        label: const Text('Picked Up'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.purple,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          minimumSize: const Size(0, 38),
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _handleTransition('on_delivery'),
+          icon: const Icon(Icons.shopping_bag_outlined, size: 16),
+          label: Text(
+            'Picked Up & Start Delivery',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.purple,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
+          ),
         ),
       );
     } else {
       // on_delivery
-      return Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        alignment: WrapAlignment.end,
+      return Row(
         children: [
-          OutlinedButton.icon(
-            onPressed: () => MapService.openDirections(context, order),
-            icon: const Icon(Icons.directions_rounded, size: 14),
-            label: const Text('Nav'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
-              side: const BorderSide(color: Color(0xFF2563EB)),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              minimumSize: const Size(0, 38),
+          Expanded(
+            flex: 2,
+            child: OutlinedButton.icon(
+              onPressed: () => MapService.openDirections(context, order),
+              icon: const Icon(Icons.directions_rounded, size: 14),
+              label: Text(
+                'Navigate',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                side: const BorderSide(color: Color(0xFF2563EB)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: () {
-              ProofOfDeliverySheet.show(
-                context,
-                order: order,
-                onConfirm: ({notes, photoBase64, recipientName}) {
-                  _handleTransition(
-                    'delivered',
-                    notes: notes,
-                    photoBase64: photoBase64,
-                    recipientName: recipientName,
-                  );
-                },
-              );
-            },
-            icon: const Icon(Icons.verified_rounded, size: 14),
-            label: const Text('Delivered'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: const Size(0, 38),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ProofOfDeliverySheet.show(
+                  context,
+                  order: order,
+                  onConfirm: ({notes, photoBase64, recipientName}) {
+                    _handleTransition(
+                      'delivered',
+                      notes: notes,
+                      photoBase64: photoBase64,
+                      recipientName: recipientName,
+                    );
+                  },
+                );
+              },
+              icon: const Icon(Icons.verified_rounded, size: 16),
+              label: Text(
+                'Delivered',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
             ),
           ),
         ],
