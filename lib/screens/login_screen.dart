@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
@@ -68,179 +67,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
-  void _fillDriverCredentials() {
-    setState(() {
-      _emailCtrl.text = 'dulanja150abeysinghe@gmail.com';
-      _passwordCtrl.text = 'password123';
-      _localError = null;
-    });
-  }
-
-  void _showServerDialog() {
-    final textCtrl = TextEditingController(text: ApiService.baseUrl);
-    bool isTesting = false;
-    bool? testResult;
-    String? statusMsg;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
-                children: [
-                  const Icon(Icons.dns_rounded, color: Color(0xFF2563EB), size: 22),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Server Endpoint',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Connected backend API URL:',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: textCtrl,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'https://the-menu-admin.onrender.com/api/driver-app-api',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        ActionChip(
-                          label: const Text('Render Online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          onPressed: () {
-                            setDialogState(() {
-                              textCtrl.text = 'https://the-menu-admin.onrender.com/api/driver-app-api';
-                              testResult = null;
-                              statusMsg = null;
-                            });
-                          },
-                        ),
-                        ActionChip(
-                          label: const Text('Localhost (Emulator)', style: TextStyle(fontSize: 10)),
-                          onPressed: () {
-                            setDialogState(() {
-                              textCtrl.text = 'http://10.0.2.2:8000/api';
-                              testResult = null;
-                              statusMsg = null;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    if (statusMsg != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: (testResult == true ? Colors.green : Colors.red)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              testResult == true ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                              size: 16,
-                              color: testResult == true ? Colors.green : Colors.red,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                statusMsg!,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: testResult == true ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isTesting
-                      ? null
-                      : () async {
-                          setDialogState(() {
-                            isTesting = true;
-                            statusMsg = 'Pinging server...';
-                          });
-                          final ok = await ApiService.testServerConnection(textCtrl.text.trim());
-                          setDialogState(() {
-                            isTesting = false;
-                            testResult = ok;
-                            statusMsg = ok ? 'Server is online & reachable!' : 'Server unreachable (waking up or offline)';
-                          });
-                        },
-                  child: isTesting
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Test Ping'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () async {
-                    final newUrl = textCtrl.text.trim();
-                    if (newUrl.isNotEmpty) {
-                      await ApiService.setBaseUrl(newUrl);
-                      if (context.mounted) {
-                        Navigator.pop(ctx);
-                        setState(() {});
-                      }
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isLoading = auth.status == AuthStatus.loading;
-    final currentServer = ApiService.baseUrl.contains('onrender') ? 'Render Online' : 'Custom Server';
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -258,51 +88,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top Row: Server Config Pill
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: InkWell(
-                          onTap: _showServerDialog,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Theme.of(context).dividerColor),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  currentServer,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.settings_outlined,
-                                  size: 13,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
                       const SizedBox(height: 12),
 
                       // Brand Icon & Badge
@@ -443,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               controller: _emailCtrl,
                               focusNode: _emailFocus,
                               label: 'Email Address',
-                              hint: 'dulanja150abeysinghe@gmail.com',
+                              hint: 'courier@themenu.lk',
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autocorrect: false,
@@ -522,39 +307,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               icon: Icons.login_rounded,
                               isLoading: isLoading,
                               onPressed: isLoading ? null : _login,
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            // Quick Demo Auto-Fill Chip
-                            Center(
-                              child: InkWell(
-                                onTap: _fillDriverCredentials,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.flash_on_rounded, size: 14, color: AppTheme.primaryDark),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Fill Registered Driver Account',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.primaryDark,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
                             ),
                           ],
                         ),

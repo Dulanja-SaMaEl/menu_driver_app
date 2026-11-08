@@ -144,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Synced with server (${_formatTime(_lastSyncedAt ?? DateTime.now())})',
+                'Updated (${_formatTime(_lastSyncedAt ?? DateTime.now())})',
                 style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
@@ -365,23 +365,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              FadeTransition(
-                                opacity: isOnline ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isOnline ? const Color(0xFF10B981) : Colors.grey,
-                                    boxShadow: isOnline
-                                        ? [
-                                            BoxShadow(
-                                              color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                                              blurRadius: 6,
-                                              spreadRadius: 2,
-                                            )
-                                          ]
-                                        : null,
+                              RepaintBoundary(
+                                child: FadeTransition(
+                                  opacity: isOnline ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isOnline ? const Color(0xFF10B981) : Colors.grey,
+                                      boxShadow: isOnline
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(0xFF10B981).withValues(alpha: 0.6),
+                                                blurRadius: 6,
+                                                spreadRadius: 2,
+                                              )
+                                            ]
+                                          : null,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -670,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               _fetchData();
                             } else if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Failed to update status on server')),
+                                const SnackBar(content: Text('Could not update shift status. Please try again.')),
                               );
                             }
                           },

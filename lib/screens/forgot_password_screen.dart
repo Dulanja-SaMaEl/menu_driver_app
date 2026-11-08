@@ -251,7 +251,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               controller: _emailCtrl,
                               focusNode: _emailFocus,
                               label: 'Email Address',
-                              hint: 'dulanja150abeysinghe@gmail.com',
+                              hint: 'courier@themenu.lk',
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autocorrect: false,

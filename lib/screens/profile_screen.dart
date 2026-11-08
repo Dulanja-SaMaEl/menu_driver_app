@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
@@ -363,9 +362,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     Divider(color: Theme.of(context).dividerColor, height: 22),
                     _ProfileRow(
-                      icon: Icons.dns_rounded,
-                      label: 'Server Endpoint',
-                      value: ApiService.baseUrl.contains('render') ? 'Render Production (Online)' : ApiService.baseUrl,
+                      icon: Icons.tag_rounded,
+                      label: 'Courier ID',
+                      value: '#${driver?.id ?? 1}',
                     ),
                   ],
                 ),

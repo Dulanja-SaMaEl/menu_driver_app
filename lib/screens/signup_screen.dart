@@ -214,7 +214,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           controller: _nameCtrl,
                           focusNode: _nameFocus,
                           label: 'Full Name',
-                          hint: 'Dulanja Abeysinghe',
+                          hint: 'e.g. Saman Kumara',
                           textInputAction: TextInputAction.next,
                           prefixIcon: Icons.person_outline_rounded,
                           onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_emailFocus),
