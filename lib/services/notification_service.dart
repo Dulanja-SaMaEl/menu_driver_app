@@ -18,8 +18,8 @@ class NotificationService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   static const int activeNotificationId = 8888;
-  static const String channelId = 'active_delivery_channel';
-  static const String channelName = 'Active Deliveries';
+  static const String channelId = 'active_delivery_channel_v2';
+  static const String channelName = 'Active Deliveries Status';
   static const String actionMarkDelivered = 'action_mark_delivered';
 
   static const String dispatchChannelId = 'dispatch_alert_channel';
@@ -68,13 +68,19 @@ class NotificationService {
         AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidPlugin != null) {
+      // Remove legacy noisy channel so Android resets to silent importance
+      try {
+        await androidPlugin.deleteNotificationChannel(channelId: 'active_delivery_channel');
+      } catch (_) {}
+
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
         channelId,
         channelName,
-        description: 'Persistent real-time notifications for active deliveries',
-        importance: Importance.high,
-        playSound: true,
-        enableVibration: true,
+        description: 'Persistent silent real-time status for active deliveries',
+        importance: Importance.low, // Silent, never buzzes or chimes
+        playSound: false,
+        enableVibration: false,
+        showBadge: false,
       );
       await androidPlugin.createNotificationChannel(channel);
 
@@ -126,6 +132,8 @@ class NotificationService {
     } catch (_) {}
   }
 
+  static String? _lastNotificationFingerprint;
+
   /// Syncs the ongoing notification with current active orders in real-time
   static Future<void> syncActiveOrdersNotification(List<Order> orders) async {
     if (kIsWeb) return;
@@ -133,12 +141,20 @@ class NotificationService {
     final activeOrders = orders.where((o) => o.isActive).toList();
 
     if (activeOrders.isEmpty) {
+      _lastNotificationFingerprint = null;
       await cancelActiveNotification();
       return;
     }
 
     final currentOrder = activeOrders.first;
     final otherOrdersCount = activeOrders.length - 1;
+
+    // Deduplication Fingerprint: If order ID, status, and active queue length haven't changed, do not re-show
+    final fingerprint = '${currentOrder.id}_${currentOrder.status}_${activeOrders.length}_${currentOrder.totalAmount}';
+    if (_lastNotificationFingerprint == fingerprint) {
+      return; // Already up to date, skip notifying Android notification manager
+    }
+    _lastNotificationFingerprint = fingerprint;
 
     final String title = '🚚 Stop #1: ${currentOrder.orderNumber}';
     final String address = currentOrder.deliveryAddress.trim();
@@ -156,10 +172,14 @@ class NotificationService {
       channelId,
       channelName,
       channelDescription: 'Persistent notification for ongoing orders',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.low,
+      priority: Priority.low,
       ongoing: true,
       autoCancel: false,
+      onlyAlertOnce: true, // Alerts only once; updates silently without buzzing/chiming
+      playSound: false,
+      enableVibration: false,
+      showWhen: false,
       color: const Color(0xFF2563EB),
       actions: const <AndroidNotificationAction>[deliveredAction],
       styleInformation: BigTextStyleInformation(
@@ -183,6 +203,7 @@ class NotificationService {
   /// Cancel active notification
   static Future<void> cancelActiveNotification() async {
     if (kIsWeb) return;
+    _lastNotificationFingerprint = null;
     try {
       await _plugin.cancel(id: activeNotificationId);
     } catch (_) {}

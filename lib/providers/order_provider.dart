@@ -226,7 +226,6 @@ class OrderProvider extends ChangeNotifier {
 
         _knownOrderIds.addAll(fetched.map((o) => o.id));
         _allOrders = fetched;
-        NotificationService.syncActiveOrdersNotification(_allOrders);
       } else {
         _errorMessage = result['message'] ?? 'Failed to fetch orders';
       }
@@ -260,10 +259,6 @@ class OrderProvider extends ChangeNotifier {
 
         _knownOrderIds.addAll(fetched.map((o) => o.id));
         _latestOrders = fetched;
-
-        if (_allOrders.isEmpty) {
-          NotificationService.syncActiveOrdersNotification(_latestOrders);
-        }
       } else {
         _errorMessage = result['message'] ?? 'Failed to fetch latest orders';
       }
