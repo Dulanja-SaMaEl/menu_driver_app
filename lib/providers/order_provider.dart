@@ -19,6 +19,7 @@ class OrderProvider extends ChangeNotifier {
   Position? _currentPosition;
   bool _isLocationPermissionGranted = false;
   bool _sortByProximity = true; // Nearest-first enabled by default
+  List<Order>? _cachedOptimizedActiveOrders;
 
   // Incoming Dispatch Notification State
   final Set<int> _knownOrderIds = {};
@@ -44,6 +45,7 @@ class OrderProvider extends ChangeNotifier {
 
   void toggleProximitySorting() {
     _sortByProximity = !_sortByProximity;
+    _cachedOptimizedActiveOrders = null;
     notifyListeners();
   }
 
@@ -58,6 +60,19 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  bool _haveOrdersChanged(List<Order> oldList, List<Order> newList) {
+    if (oldList.length != newList.length) return true;
+    for (int i = 0; i < oldList.length; i++) {
+      if (oldList[i].id != newList[i].id ||
+          oldList[i].status != newList[i].status ||
+          oldList[i].orderNumber != newList[i].orderNumber ||
+          oldList[i].totalAmount != newList[i].totalAmount) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Initialize or refresh the rider's current GPS location
   Future<void> refreshLocation() async {
     try {
@@ -66,18 +81,42 @@ class OrderProvider extends ChangeNotifier {
       if (hasPermission) {
         final position = await _locationService.getCurrentPosition();
         if (position != null) {
-          _currentPosition = position;
+          final double distance = _currentPosition != null
+              ? LocationService.getDistanceBetween(
+                  _currentPosition!.latitude,
+                  _currentPosition!.longitude,
+                  position.latitude,
+                  position.longitude,
+                )
+              : 999.0;
+          if (distance >= 5.0) {
+            _currentPosition = position;
+            _cachedOptimizedActiveOrders = null;
+            notifyListeners();
+          }
         }
       }
-      notifyListeners();
     } catch (_) {}
   }
 
   /// Update position when stream emits new location
   void updateCurrentPosition(Position position, {String? token, bool isOnline = true}) {
-    _currentPosition = position;
-    _isLocationPermissionGranted = true;
-    notifyListeners();
+    final double distance = _currentPosition != null
+        ? LocationService.getDistanceBetween(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+            position.latitude,
+            position.longitude,
+          )
+        : 999.0;
+
+    // Suppress jitter if under 5 meters to prevent frame jank
+    if (distance >= 5.0) {
+      _currentPosition = position;
+      _cachedOptimizedActiveOrders = null;
+      _isLocationPermissionGranted = true;
+      notifyListeners();
+    }
 
     // Stream telemetry to the-menu-admin when active
     if (token != null && isOnline) {
@@ -128,10 +167,18 @@ class OrderProvider extends ChangeNotifier {
 
   /// Active orders optimized with Nearest-First sorting
   List<Order> get optimizedActiveOrders {
+    if (_cachedOptimizedActiveOrders != null) {
+      return _cachedOptimizedActiveOrders!;
+    }
+
     final active = activeOrders;
-    if (active.isEmpty) return [];
+    if (active.isEmpty) {
+      _cachedOptimizedActiveOrders = const [];
+      return _cachedOptimizedActiveOrders!;
+    }
 
     if (!_sortByProximity || _currentPosition == null) {
+      _cachedOptimizedActiveOrders = active;
       return active;
     }
 
@@ -155,7 +202,8 @@ class OrderProvider extends ChangeNotifier {
       return distA.compareTo(distB);
     });
 
-    return [...withCoords, ...withoutCoords];
+    _cachedOptimizedActiveOrders = [...withCoords, ...withoutCoords];
+    return _cachedOptimizedActiveOrders!;
   }
 
   /// Completed/delivered orders
@@ -203,10 +251,12 @@ class OrderProvider extends ChangeNotifier {
     return LocationService.formatDuration(totalRouteDistance);
   }
 
-  Future<void> fetchAllOrders(String token) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> fetchAllOrders(String token, {bool silent = false}) async {
+    if (!silent) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       final result = await _api.getOrders(token);
@@ -225,22 +275,37 @@ class OrderProvider extends ChangeNotifier {
         }
 
         _knownOrderIds.addAll(fetched.map((o) => o.id));
+        final bool changed = _haveOrdersChanged(_allOrders, fetched);
+        if (changed) {
+          _cachedOptimizedActiveOrders = null;
+        }
         _allOrders = fetched;
+        if (!silent || changed) {
+          notifyListeners();
+        }
       } else {
-        _errorMessage = result['message'] ?? 'Failed to fetch orders';
+        if (!silent) {
+          _errorMessage = result['message'] ?? 'Failed to fetch orders';
+        }
       }
     } catch (e) {
-      _errorMessage = 'Network error. Please try again.';
+      if (!silent) {
+        _errorMessage = 'Network error. Please try again.';
+      }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!silent) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> fetchLatestOrders(String token) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> fetchLatestOrders(String token, {bool silent = false}) async {
+    if (!silent) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       final result = await _api.getLatestOrders(token);
@@ -258,15 +323,25 @@ class OrderProvider extends ChangeNotifier {
         }
 
         _knownOrderIds.addAll(fetched.map((o) => o.id));
+        final bool changed = _haveOrdersChanged(_latestOrders, fetched);
         _latestOrders = fetched;
+        if (!silent || changed) {
+          notifyListeners();
+        }
       } else {
-        _errorMessage = result['message'] ?? 'Failed to fetch latest orders';
+        if (!silent) {
+          _errorMessage = result['message'] ?? 'Failed to fetch latest orders';
+        }
       }
     } catch (e) {
-      _errorMessage = 'Network error. Please try again.';
+      if (!silent) {
+        _errorMessage = 'Network error. Please try again.';
+      }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!silent) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 

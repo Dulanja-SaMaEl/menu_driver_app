@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
+import '../models/driver.dart';
 import '../models/order.dart';
 import '../services/map_service.dart';
 import '../theme/app_theme.dart';
@@ -223,9 +224,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final orderProvider = context.watch<OrderProvider>();
-    final driver = context.watch<AuthProvider>().driver;
-    final allOrders = orderProvider.allOrders;
+    final allOrders = context.select<OrderProvider, List<Order>>((p) => p.allOrders);
+    final isLoading = context.select<OrderProvider, bool>((p) => p.isLoading);
+    final driver = context.select<AuthProvider, Driver?>((p) => p.driver);
 
     final filteredOrders = allOrders.where((order) {
       final matchesFilter = switch (_selectedFilter) {
@@ -356,7 +357,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
             // Orders List
             Expanded(
-              child: orderProvider.isLoading && allOrders.isEmpty
+              child: isLoading && allOrders.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : filteredOrders.isEmpty
                       ? Center(

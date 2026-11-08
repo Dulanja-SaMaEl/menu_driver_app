@@ -20,8 +20,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final orderProvider = context.watch<OrderProvider>();
-    final deliveredOrders = orderProvider.deliveredOrders;
+    final deliveredOrders = context.select<OrderProvider, List<Order>>((p) => p.deliveredOrders);
 
     // Filter by period
     final now = DateTime.now();

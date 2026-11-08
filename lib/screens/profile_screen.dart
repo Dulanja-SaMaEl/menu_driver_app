@@ -142,8 +142,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final driver = authProvider.driver;
-    final allOrders = context.watch<OrderProvider>().allOrders;
-    final deliveredOrders = allOrders.where((o) => o.status.toLowerCase() == 'delivered').length;
+    final deliveredOrders = context.select<OrderProvider, int>(
+      (p) => p.deliveredOrders.length,
+    );
 
     final rawStatus = (driver?.status ?? (driver?.isActive == true ? 'available' : 'offline')).toLowerCase();
     final bool isOnline = rawStatus != 'offline';

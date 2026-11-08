@@ -165,11 +165,18 @@ class AuthProvider extends ChangeNotifier {
       if (result['success'] == true) {
         final driverData = result['driver'] ?? result['user'] ?? result;
         if (driverData is Map) {
-          _driver = Driver.fromJson({
+          final newDriver = Driver.fromJson({
             ...Map<String, dynamic>.from(driverData),
             'token': _driver!.token,
           });
-          notifyListeners();
+          if (_driver?.status != newDriver.status ||
+              _driver?.name != newDriver.name ||
+              _driver?.phone != newDriver.phone ||
+              _driver?.vehicleNumber != newDriver.vehicleNumber ||
+              _driver?.isActive != newDriver.isActive) {
+            _driver = newDriver;
+            notifyListeners();
+          }
         }
       }
     } catch (_) {}

@@ -93,8 +93,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       await auth.refreshProfile();
       if (mounted) {
         final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-        await orderProvider.fetchLatestOrders(driver!.token!);
-        await orderProvider.fetchAllOrders(driver.token!);
+        await orderProvider.fetchLatestOrders(driver!.token!, silent: true);
+        await orderProvider.fetchAllOrders(driver.token!, silent: true);
         await orderProvider.refreshLocation();
         await orderProvider.syncLocationTelemetry(driver.token!, isOnline: true);
         await orderProvider.syncOfflineQueue(driver.token!);
@@ -308,12 +308,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: RefreshIndicator(
           onRefresh: _handleManualRefresh,
           color: AppTheme.primary,
-          child: SingleChildScrollView(
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 // Header with Menu, Manual Refresh & Profile
                 Row(
                   children: [
@@ -1085,83 +1088,99 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   const SizedBox(height: 14),
                 ],
 
-                // Orders List
-                if (orderProvider.isLoading && activeOrders.isEmpty && allOrders.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (activeOrders.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.task_alt_rounded,
-                          size: 48,
-                          color: const Color(0xFF10B981).withValues(alpha: 0.8),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'All deliveries completed!',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isOnline
-                              ? 'Waiting for new orders dispatched by Admin'
-                              : 'Turn on online status to become available for dispatches',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: activeOrders.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      final order = activeOrders[index];
-                      final isNextStop = index == 0;
-                      final stopNumber = index + 1;
-                      final distance = orderProvider.getDistanceFormatted(order);
-                      final duration = orderProvider.getDurationFormatted(order);
-
-                      return _OrderCard(
-                        order: order,
-                        token: driver?.token,
-                        isNextStop: isNextStop,
-                        stopNumber: stopNumber,
-                        distanceFormatted: distance,
-                        durationFormatted: duration,
-                        onStatusUpdated: _fetchData,
-                      );
-                    },
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+
+          // Orders List (Virtualized Slivers for high performance 60fps)
+          if (orderProvider.isLoading && activeOrders.isEmpty && allOrders.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            )
+          else if (activeOrders.isEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+              sliver: SliverToBoxAdapter(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.task_alt_rounded,
+                        size: 48,
+                        color: const Color(0xFF10B981).withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'All deliveries completed!',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isOnline
+                            ? 'Waiting for new orders dispatched by Admin'
+                            : 'Turn on online status to become available for dispatches',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+              sliver: SliverList.separated(
+                itemCount: activeOrders.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  final order = activeOrders[index];
+                  final isNextStop = index == 0;
+                  final stopNumber = index + 1;
+                  final distance = orderProvider.getDistanceFormatted(order);
+                  final duration = orderProvider.getDurationFormatted(order);
+
+                  return RepaintBoundary(
+                    child: _OrderCard(
+                      key: ValueKey(order.id),
+                      order: order,
+                      token: driver?.token,
+                      isNextStop: isNextStop,
+                      stopNumber: stopNumber,
+                      distanceFormatted: distance,
+                      durationFormatted: duration,
+                      onStatusUpdated: _fetchData,
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -1231,6 +1250,7 @@ class _OrderCard extends StatefulWidget {
   final VoidCallback onStatusUpdated;
 
   const _OrderCard({
+    super.key,
     required this.order,
     required this.token,
     required this.isNextStop,
